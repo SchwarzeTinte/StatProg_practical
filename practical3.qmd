@@ -1,0 +1,13 @@
+---
+title: "Practical 3 Debugging Exercise"
+author: "Youpeng Wang"
+format: html
+---
+
+# Practical 3
+
+This is a placeholder file for Practical 3.
+
+# Debugging notes
+
+This file is used for Practical 4 version control exercises.
