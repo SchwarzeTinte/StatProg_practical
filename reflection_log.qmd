@@ -1,0 +1,7 @@
+# Week 4 Reflection Log
+
+This week, the most confusing part of using Git was understanding the difference between my local folder and the remote GitHub repository. At first, I thought opening a folder in VS Code was already enough, but I now understand that GitHub is a separate remote copy. I had to clone the repository, make commits locally, and then push the changes to GitHub.
+
+Another confusing moment was the difference between `git pull` and `git fetch`. I now understand that `git fetch` only downloads information about remote changes, while `git pull` downloads and merges them immediately. Using `git fetch` first feels safer because I can inspect the changes before applying them to my local files.
+
+Committing code frequently changes how I think about my work because it forces me to divide the task into smaller steps. Instead of making many changes at once, I can save meaningful versions one by one. This makes it easier to go back to an earlier version if something breaks.
