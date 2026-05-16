@@ -11,3 +11,7 @@ This is a placeholder file for Practical 3.
 # Debugging notes
 
 This file is used for Practical 4 version control exercises.
+
+# Practical 4 clone test
+
+This line was added from a cloned copy.
