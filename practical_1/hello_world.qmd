@@ -1,0 +1,14 @@
+---
+title: "Hello World"
+format: html 
+---
+
+#Introduction
+
+Hello, World!
+
+```{r}
+knitr :: include_graphics(here :: here("practical_1", "images", "whole-game.png"))
+```
+
+![THe whole game of data science](images/whole-game.png)

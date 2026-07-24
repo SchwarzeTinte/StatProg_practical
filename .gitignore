@@ -1,13 +1,4 @@
-# R session artefacts
-.Rhistory
-.RData
-.Rproj.user/
-
-# Quarto build output
-/_site/
-/.quarto/
+@"
+.quarto/
 *_files/
-
-# OS noise
-.DS_Store
-Thumbs.db
+"@ 
