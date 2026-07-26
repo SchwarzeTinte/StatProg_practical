@@ -1,0 +1,31 @@
+---
+title: "Broken document"
+format: html
+---
+
+## First chunk
+
+```{r}
+library(palmerpenguins)
+library(dplyr)
+
+head(penguins)
+```
+
+## Second chunk
+
+```{r}
+penguins |>
+  filter(species = "Adelie") |>
+  ggplot(aes(
+    x = bill_length_mm,
+    y = bill_depth_mm
+  )) +
+  geom_point()
+```
+
+## Third chunk
+
+```{r, echo=TREU}
+summary(penguins)
+```

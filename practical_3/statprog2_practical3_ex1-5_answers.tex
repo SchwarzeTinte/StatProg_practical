@@ -1,0 +1,1046 @@
+\documentclass[11pt,a4paper]{ctexart}
+
+\usepackage[a4paper,margin=2.35cm]{geometry}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+
+\definecolor{codebg}{HTML}{F6F8FA}
+\definecolor{codeframe}{HTML}{D0D7DE}
+\definecolor{codegreen}{HTML}{116329}
+\definecolor{codepurple}{HTML}{8250DF}
+\definecolor{codeblue}{HTML}{0550AE}
+
+\lstdefinestyle{rcode}{
+  language=R,
+  backgroundcolor=\color{codebg},
+  frame=single,
+  rulecolor=\color{codeframe},
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{codeblue}\bfseries,
+  commentstyle=\color{codegreen},
+  stringstyle=\color{codepurple},
+  numbers=left,
+  numberstyle=\scriptsize\color{gray},
+  numbersep=8pt,
+  breaklines=true,
+  showstringspaces=false,
+  columns=fullflexible,
+  keepspaces=true,
+  tabsize=2,
+  xleftmargin=1em,
+  framexleftmargin=0.6em
+}
+
+\lstdefinestyle{textcode}{
+  backgroundcolor=\color{codebg},
+  frame=single,
+  rulecolor=\color{codeframe},
+  basicstyle=\ttfamily\small,
+  numbers=none,
+  breaklines=true,
+  showstringspaces=false,
+  columns=fullflexible,
+  keepspaces=true,
+  tabsize=2,
+  xleftmargin=1em,
+  framexleftmargin=0.6em
+}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=codeblue,
+  urlcolor=codeblue,
+  pdftitle={StatProg II Practical 3 -- Debugging},
+  pdfauthor={整理版}
+}
+
+\setlist[itemize]{itemsep=0.3em,topsep=0.4em}
+\setlist[enumerate]{itemsep=0.3em,topsep=0.4em}
+\renewcommand{\arraystretch}{1.2}
+
+\pagestyle{fancy}
+\setlength{\headheight}{14pt}
+\fancyhf{}
+\lhead{StatProg II}
+\rhead{Practical 3: Debugging}
+\cfoot{\thepage}
+
+\title{\textbf{Statistical Programming II}\\
+Practical 3: Debugging\\
+\large Exercise 1--5 答案与复习笔记}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\part{中文答案}
+
+\section{Exercise 1：调试带列参数的函数}
+
+\subsection{问题代码}
+
+\begin{lstlisting}[style=rcode]
+mean_mass_by <- function(data, group_var) {
+  data |>
+    group_by(group_var) |>
+    summarise(
+      mean_mass = mean(body_mass_g, na.rm = TRUE)
+    )
+}
+\end{lstlisting}
+
+如果调用：
+
+\begin{lstlisting}[style=rcode]
+mean_mass_by(penguins, species)
+\end{lstlisting}
+
+函数中的 \lstinline|group_by(group_var)| 不会自动把
+\lstinline|group_var| 替换为调用时传入的列 \lstinline|species|。
+\texttt{dplyr} 的 \lstinline|group_by()| 使用 data masking（数据掩码）和
+tidy evaluation（整洁求值）。在自定义函数中转交一个未加引号的列名时，
+需要明确告诉 \texttt{dplyr}：这里传入的是一列表达式。
+
+\subsection{修正答案}
+
+\begin{lstlisting}[style=rcode]
+mean_mass_by <- function(data, group_var) {
+  data |>
+    group_by({{ group_var }}) |>
+    summarise(
+      mean_mass = mean(body_mass_g, na.rm = TRUE),
+      .groups = "drop"
+    )
+}
+
+mean_mass_by(penguins, species)
+\end{lstlisting}
+
+\lstinline|{{ group_var }}| 称为 embracing。可以把它理解为：
+
+\begin{quote}
+取得调用者传入的列名表达式，并把它放到 \lstinline|group_by()| 中求值。
+\end{quote}
+
+这里传参时不需要加引号：
+
+\begin{lstlisting}[style=rcode]
+mean_mass_by(penguins, species)
+\end{lstlisting}
+
+如果函数设计为接收字符串，例如 \lstinline|"species"|，则应写成：
+
+\begin{lstlisting}[style=rcode]
+mean_mass_by_string <- function(data, group_var) {
+  data |>
+    group_by(.data[[group_var]]) |>
+    summarise(
+      mean_mass = mean(body_mass_g, na.rm = TRUE),
+      .groups = "drop"
+    )
+}
+
+mean_mass_by_string(penguins, "species")
+\end{lstlisting}
+
+\subsection{本题要点}
+
+\begin{itemize}
+  \item 未加引号的列名参数：使用 \lstinline|{{ column }}|。
+  \item 字符串形式的列名：使用 \lstinline|.data[[column]]|。
+  \item \lstinline|na.rm = TRUE| 用于在计算均值时忽略缺失值。
+  \item \lstinline|.groups = "drop"| 让结果不再保留分组结构。
+\end{itemize}
+
+\section{Exercise 2：错误发生在辅助函数内部}
+
+\subsection{问题代码}
+
+\begin{lstlisting}[style=rcode]
+mean_body_mass <- function(x) {
+  mean(x, na.rm = TREU)
+}
+
+summarise_species <- function(data) {
+  data |>
+    group_by(species) |>
+    summarise(
+      mean_mass = mean_body_mass(body_mass_g)
+    )
+}
+
+summarise_species(penguins)
+\end{lstlisting}
+
+运行后会出现类似错误：
+
+\begin{lstlisting}[style=textcode]
+Error in `summarise()`:
+...
+Caused by error in `mean()`:
+! object 'TREU' not found
+\end{lstlisting}
+
+\subsection{错误原因}
+
+\lstinline|TREU| 是拼写错误。R 的逻辑值必须写成：
+
+\begin{lstlisting}[style=rcode]
+TRUE
+FALSE
+\end{lstlisting}
+
+R 会把没有引号的 \lstinline|TREU| 当作对象名查找；当前环境中不存在这个
+对象，因此产生 \lstinline|object 'TREU' not found|。
+
+外层报错位置可能显示在 \lstinline|summarise()| 中，但真正出错的调用链是：
+
+\begin{lstlisting}[style=textcode]
+summarise_species()
+  -> summarise()
+     -> mean_body_mass()
+        -> mean(..., na.rm = TREU)
+\end{lstlisting}
+
+因此，阅读嵌套错误时不能只看最外层函数，还应继续阅读
+\texttt{Caused by error in ...} 部分。
+
+\subsection{修正答案}
+
+\begin{lstlisting}[style=rcode]
+mean_body_mass <- function(x) {
+  mean(x, na.rm = TRUE)
+}
+
+summarise_species <- function(data) {
+  data |>
+    group_by(species) |>
+    summarise(
+      mean_mass = mean_body_mass(body_mass_g),
+      .groups = "drop"
+    )
+}
+
+summarise_species(penguins)
+\end{lstlisting}
+
+\subsection{本题要点}
+
+\begin{itemize}
+  \item 报错显示在外层函数，不等于错误一定发生在外层函数。
+  \item 应沿着 error message 中的调用关系寻找最内层原因。
+  \item \lstinline|TRUE| 和 \lstinline|FALSE| 是 R 的保留逻辑值，不能随意拼写。
+  \item 将重复计算封装为辅助函数没有问题，但调试时也必须检查辅助函数。
+\end{itemize}
+
+\section{Exercise 3：使用 \texttt{browser()} 调试递归函数}
+
+\subsection{原始函数及递归逻辑}
+
+\begin{lstlisting}[style=rcode]
+my_factorial <- function(n) {
+  if (n == 1) return(1)
+  return(n * my_factorial(n - 1))
+}
+\end{lstlisting}
+
+对于 \lstinline|my_factorial(5)|，递归过程是：
+
+\begin{lstlisting}[style=textcode]
+my_factorial(5)
+= 5 * my_factorial(4)
+= 5 * 4 * my_factorial(3)
+= 5 * 4 * 3 * my_factorial(2)
+= 5 * 4 * 3 * 2 * my_factorial(1)
+= 5 * 4 * 3 * 2 * 1
+= 120
+\end{lstlisting}
+
+\lstinline|if (n == 1) return(1)| 是 base case（终止条件）。如果递归过程
+永远无法到达这个条件，函数就无法正常结束。
+
+\subsection{加入 \texttt{browser()}}
+
+\begin{lstlisting}[style=rcode]
+my_factorial <- function(n) {
+  browser()
+
+  if (n == 1) return(1)
+  return(n * my_factorial(n - 1))
+}
+
+my_factorial(0)
+\end{lstlisting}
+
+函数运行到 \lstinline|browser()| 时会暂停，并显示：
+
+\begin{lstlisting}[style=textcode]
+Browse[1]>
+\end{lstlisting}
+
+此时函数并没有结束。R 只是把执行暂停，让我们检查当前环境、逐行运行代码，
+或者查看函数调用链。
+
+\subsection{为什么不能只输入 \texttt{n}}
+
+函数参数叫 \lstinline|n|，但在 debugger 中，单独的 \lstinline|n| 也是
+\texttt{next} 命令。因此：
+
+\begin{lstlisting}[style=rcode]
+print(n)  # inspect the current value of n
+n         # execute the debugger's "next" command
+\end{lstlisting}
+
+这解释了为什么输入 \lstinline|n| 后没有打印变量，反而看到了下一行代码。
+
+\subsection{\texttt{my\_factorial(0)} 为什么无法结束}
+
+第一次暂停时：
+
+\begin{lstlisting}[style=textcode]
+Browse[1]> print(n)
+[1] 0
+\end{lstlisting}
+
+因为 \lstinline|0 == 1| 为 \lstinline|FALSE|，函数继续调用：
+
+\begin{lstlisting}[style=rcode]
+my_factorial(n - 1)
+# my_factorial(-1)
+\end{lstlisting}
+
+之后参数按照下面的顺序变化：
+
+\begin{lstlisting}[style=textcode]
+0 -> -1 -> -2 -> -3 -> -4 -> ...
+\end{lstlisting}
+
+它永远不会等于 1，所以递归无法停止，最终通常会产生栈空间相关错误。
+问题不在于数学上没有 \(0!\)。事实上：
+
+\[
+0! = 1.
+\]
+
+真正的问题是原函数没有把 0 纳入终止条件。
+
+\subsection{\texttt{my\_factorial(3.5)} 为什么也不行}
+
+\begin{lstlisting}[style=textcode]
+3.5 -> 2.5 -> 1.5 -> 0.5 -> -0.5 -> ...
+\end{lstlisting}
+
+这一序列同样不会准确到达 1。此外，本题中的阶乘函数只应接受非负整数，
+所以小数应在递归开始前直接被拒绝。
+
+\subsection{常用调试命令}
+
+\begin{longtable}{>{\ttfamily}p{0.16\textwidth}p{0.73\textwidth}}
+\toprule
+\normalfont 命令 & 含义 \\
+\midrule
+\endhead
+print(n) & 查看变量 \texttt{n} 的当前值。\\
+n & 执行下一条语句；通常不主动进入普通函数内部。\\
+s & step into：执行下一步，并尝试进入该行调用的函数。\\
+f & finish：尝试执行完当前函数，然后返回上一层。\\
+c & continue：继续运行到下一个断点、错误或程序结束。\\
+where & 显示当前调用栈。\\
+Q & 立即退出当前调试过程。\\
+\bottomrule
+\end{longtable}
+
+\subsection{如何理解 \texttt{where}}
+
+例如：
+
+\begin{lstlisting}[style=textcode]
+where 1 at #4: my_factorial(n - 1)
+where 2 at #4: my_factorial(n - 1)
+where 3 at #4: my_factorial(n - 1)
+where 4 at #4: my_factorial(n - 1)
+where 5: my_factorial(0)
+\end{lstlisting}
+
+可以简化为：
+
+\begin{lstlisting}[style=textcode]
+my_factorial(0)
+  -> my_factorial(-1)
+     -> my_factorial(-2)
+        -> my_factorial(-3)
+           -> my_factorial(-4)  # current frame
+\end{lstlisting}
+
+\texttt{where 1} 是最靠近当前执行位置的调用，最后的
+\texttt{where 5} 是最早的调用。外层函数都在等待更内层函数返回结果。
+
+\texttt{Browse[1]} 中的数字 1 不是变量 \lstinline|n| 的值，也不是当前
+递归深度。递归层数应通过 \lstinline|where| 判断。
+
+\subsection{正确修复}
+
+\begin{lstlisting}[style=rcode]
+my_factorial <- function(n) {
+  stopifnot(
+    n >= 0,
+    n == as.integer(n)
+  )
+
+  if (n <= 1) return(1)
+
+  return(n * my_factorial(n - 1))
+}
+
+my_factorial(0)    # 1
+my_factorial(1)    # 1
+my_factorial(5)    # 120
+my_factorial(3.5)  # Error
+\end{lstlisting}
+
+修复包含两部分：
+
+\begin{enumerate}
+  \item \lstinline|stopifnot()| 检查 \lstinline|n| 是否为非负整数；
+  \item \lstinline|n <= 1| 同时正确处理 \(0!\) 和 \(1!\)。
+\end{enumerate}
+
+输入检查必须放在终止条件之前，否则负数也可能因为
+\lstinline|n <= 1| 被错误地返回 1。调试完成后应删除函数中的
+\lstinline|browser()|。
+
+\section{Exercise 4：使用 \texttt{debug()} 和 \texttt{debugonce()}}
+
+\subsection{问题函数}
+
+\begin{lstlisting}[style=rcode]
+standardise <- function(x) {
+  (x - mean(x)) / sd(x)
+}
+
+standardise(c(1, 2, NA, 4, 5))
+# NA NA NA NA NA
+\end{lstlisting}
+
+标准化公式为：
+
+\[
+z_i = \frac{x_i-\bar{x}}{s}.
+\]
+
+只有一个元素为 \lstinline|NA|，但结果全部变成了 \lstinline|NA|。
+
+\subsection{使用 \texttt{debugonce()}}
+
+\begin{lstlisting}[style=rcode]
+debugonce(standardise)
+standardise(c(1, 2, NA, 4, 5))
+\end{lstlisting}
+
+\lstinline|debugonce(standardise)| 不会立即运行函数。它表示：
+
+\begin{quote}
+下一次调用 \lstinline|standardise()| 时进入调试器；完成这一次调用后，
+自动取消调试标记。
+\end{quote}
+
+进入 \lstinline|Browse[1]>| 后检查：
+
+\begin{lstlisting}[style=rcode]
+print(x)
+# [1] 1 2 NA 4 5
+
+mean(x)
+# [1] NA
+
+sd(x)
+# [1] NA
+\end{lstlisting}
+
+因此原计算实际上变成：
+
+\begin{lstlisting}[style=rcode]
+(x - NA) / NA
+\end{lstlisting}
+
+缺失值参与算术运算时会继续传播，所以所有结果都成为
+\lstinline|NA|。这称为 NA propagation。
+
+\subsection{修正答案}
+
+\begin{lstlisting}[style=rcode]
+standardise <- function(x) {
+  (x - mean(x, na.rm = TRUE)) /
+    sd(x, na.rm = TRUE)
+}
+
+standardise(c(1, 2, NA, 4, 5))
+# -1.095445 -0.547723 NA 0.547723 1.095445
+\end{lstlisting}
+
+计算均值和标准差时使用的是：
+
+\begin{lstlisting}[style=textcode]
+1, 2, 4, 5
+\end{lstlisting}
+
+它们的均值为 3。原本缺失的第三个元素仍然是 \lstinline|NA|。
+\lstinline|na.rm = TRUE| 只是让 \lstinline|mean()| 和 \lstinline|sd()|
+在计算时忽略缺失值，并不会自动填补原数据。
+
+\subsection{\texttt{debug()} 与 \texttt{debugonce()} 的区别}
+
+\begin{lstlisting}[style=rcode]
+debug(standardise)
+\end{lstlisting}
+
+使用 \lstinline|debug()| 后，每次调用函数都会进入调试器，直到手动取消：
+
+\begin{lstlisting}[style=rcode]
+undebug(standardise)
+\end{lstlisting}
+
+也可以检查函数当前是否带有调试标记：
+
+\begin{lstlisting}[style=rcode]
+isdebugged(standardise)
+# TRUE or FALSE
+\end{lstlisting}
+
+\begin{longtable}{p{0.24\textwidth}p{0.25\textwidth}p{0.20\textwidth}p{0.20\textwidth}}
+\toprule
+方法 & 设置位置 & 生效范围 & 取消方法 \\
+\midrule
+\endhead
+\lstinline|browser()| & 写在函数内部 & 每次执行到该行 & 从函数中删除 \lstinline|browser()| \\
+\lstinline|debugonce(f)| & 函数外部 & 只调试下一次调用 & 自动取消 \\
+\lstinline|debug(f)| & 函数外部 & 调试之后的每次调用 & \lstinline|undebug(f)| \\
+\bottomrule
+\end{longtable}
+
+\section{Exercise 5：调试 Quarto 文档}
+
+\subsection{调试思路}
+
+Quarto 文档从上到下执行代码块。某个 chunk 失败以后，后面的 chunk
+通常不会继续执行。因此应采用以下过程：
+
+\begin{enumerate}
+  \item 找到报错信息中第一个真正的错误；
+  \item 确认出错文件、行号和 chunk；
+  \item 修复当前错误；
+  \item 重新渲染，让下一个错误显现；
+  \item 重复以上步骤，直到渲染成功。
+\end{enumerate}
+
+\subsection{错误一：用 \texttt{=} 代替 \texttt{==}}
+
+错误代码：
+
+\begin{lstlisting}[style=rcode]
+penguins |>
+  filter(species = "Adelie")
+\end{lstlisting}
+
+\lstinline|=| 在函数调用中用于给参数命名，不表示比较。筛选
+\lstinline|species| 等于 \lstinline|"Adelie"| 的行应写成：
+
+\begin{lstlisting}[style=rcode]
+penguins |>
+  filter(species == "Adelie")
+\end{lstlisting}
+
+\begin{lstlisting}[style=textcode]
+species = "Adelie"   # assignment/naming
+species == "Adelie"  # equality comparison
+\end{lstlisting}
+
+这是 R/\texttt{dplyr} 代码执行阶段的错误。
+
+\subsection{错误二：没有加载 \texttt{ggplot2}}
+
+下列函数来自 \texttt{ggplot2}：
+
+\begin{lstlisting}[style=rcode]
+ggplot()
+aes()
+geom_point()
+\end{lstlisting}
+
+如果文档中没有加载该包，干净的渲染 session 会出现类似：
+
+\begin{lstlisting}[style=textcode]
+could not find function "ggplot"
+\end{lstlisting}
+
+因此应在文档中明确写出：
+
+\begin{lstlisting}[style=rcode]
+library(palmerpenguins)
+library(dplyr)
+library(ggplot2)
+\end{lstlisting}
+
+代码在 Console 中能运行，不代表它在 Quarto 中一定能运行。Console
+可能已经加载过 \texttt{tidyverse}，而 Quarto 渲染通常在新的 R session
+中从头执行。文档必须自己加载所需的包，不能依赖交互式环境中的历史状态。
+
+\subsection{错误三：\texttt{echo=TREU}}
+
+错误的 chunk header：
+
+\begin{lstlisting}[style=textcode]
+```{r, echo=TREU}
+summary(penguins)
+```
+\end{lstlisting}
+
+\lstinline|TREU| 不是 R 的逻辑值。可以改为：
+
+\begin{lstlisting}[style=textcode]
+```{r, echo=TRUE}
+summary(penguins)
+```
+\end{lstlisting}
+
+更推荐使用 Quarto 的 YAML 风格 chunk option：
+
+\begin{lstlisting}[style=textcode]
+```{r}
+#| echo: true
+
+summary(penguins)
+```
+\end{lstlisting}
+
+\lstinline|echo: true| 表示运行代码并在最终文档中显示源代码；
+\lstinline|echo: false| 表示运行代码但隐藏源代码。它本身不决定是否运行
+这个 chunk。
+
+该错误发生在 knitr 解析 chunk option 的阶段，甚至可能早于
+\lstinline|summary(penguins)| 的实际执行。
+
+\subsection{完整修复后的 \texttt{broken.qmd}}
+
+\begin{lstlisting}[style=textcode]
+---
+title: "Penguin bill measurements"
+format: html
+---
+
+## First chunk
+
+```{r}
+library(palmerpenguins)
+library(dplyr)
+library(ggplot2)
+
+head(penguins)
+```
+
+## Second chunk
+
+```{r}
+penguins |>
+  filter(species == "Adelie") |>
+  ggplot(aes(
+    x = bill_length_mm,
+    y = bill_depth_mm
+  )) +
+  geom_point()
+```
+
+## Third chunk
+
+```{r}
+#| echo: true
+
+summary(penguins)
+```
+\end{lstlisting}
+
+在文件所在目录运行：
+
+\begin{lstlisting}[style=textcode]
+quarto render broken.qmd
+\end{lstlisting}
+
+成功后会生成 HTML 文件。
+
+\subsection{判断错误属于哪一层}
+
+\begin{longtable}{p{0.48\textwidth}p{0.40\textwidth}}
+\toprule
+报错线索 & 可能的问题层 \\
+\midrule
+\endhead
+\texttt{Error in filter()}、\texttt{object not found}、\texttt{could not find function} & R 代码 \\
+\texttt{Quitting from ... [chunk-name]} & knitr 执行 chunk 时停止；根本原因可能仍是 R 错误 \\
+错误的 \texttt{echo}、\texttt{eval} 等 chunk option & knitr \\
+\texttt{YAMLException} 或 front matter 格式错误 & YAML/Quarto \\
+Pandoc conversion 或 extension 相关错误 & Quarto/Pandoc \\
+\texttt{LaTeX Error}、缺少 \texttt{.sty} 文件 & LaTeX/PDF 编译 \\
+\bottomrule
+\end{longtable}
+
+给 chunk 添加名称可以提高可定位性：
+
+\begin{lstlisting}[style=textcode]
+```{r}
+#| label: plot-adelie
+
+...
+```
+\end{lstlisting}
+
+此时报错会显示 \lstinline|[plot-adelie]|，比
+\lstinline|[unnamed-chunk-2]| 更容易判断位置。
+
+\subsection{HTML 与 PDF 渲染的差别}
+
+HTML 渲染大致经过：
+
+\begin{lstlisting}[style=textcode]
+.qmd -> knitr runs R -> Pandoc -> HTML
+\end{lstlisting}
+
+PDF 渲染还需要 LaTeX：
+
+\begin{lstlisting}[style=textcode]
+.qmd -> knitr runs R -> Pandoc -> LaTeX -> PDF
+\end{lstlisting}
+
+因此，把 \lstinline|format: html| 改为 \lstinline|format: pdf| 后出现
+\lstinline|No TeX installation was detected|，并不说明 R 代码有错，而是
+PDF 编译环境缺失。本题的核心是：
+
+\begin{quote}
+找到第一个真正的错误，判断它来自哪一层，修复后重新渲染；不要只盯着最后
+一行 \texttt{Execution halted}。
+\end{quote}
+
+\newpage
+\part{Deutsche Fassung}
+
+\section{Exercise 1: Spaltenargumente mit tidy evaluation}
+
+\subsection{Problem}
+
+\begin{lstlisting}[style=rcode]
+mean_mass_by <- function(data, group_var) {
+  data |>
+    group_by(group_var) |>
+    summarise(
+      mean_mass = mean(body_mass_g, na.rm = TRUE)
+    )
+}
+\end{lstlisting}
+
+\lstinline|group_by(group_var)| verwendet das Argument nicht automatisch als
+die beim Funktionsaufruf übergebene Spalte. \texttt{dplyr} arbeitet hier mit
+data masking und tidy evaluation.
+
+\subsection{Korrektur}
+
+\begin{lstlisting}[style=rcode]
+mean_mass_by <- function(data, group_var) {
+  data |>
+    group_by({{ group_var }}) |>
+    summarise(
+      mean_mass = mean(body_mass_g, na.rm = TRUE),
+      .groups = "drop"
+    )
+}
+
+mean_mass_by(penguins, species)
+\end{lstlisting}
+
+\lstinline|{{ group_var }}| übernimmt den nicht als String übergebenen
+Spaltenausdruck aus dem Funktionsaufruf. Für einen Spaltennamen als String
+würde man stattdessen \lstinline|.data[[group_var]]| verwenden.
+
+\section{Exercise 2: Fehler in einer Hilfsfunktion}
+
+\subsection{Fehlerursache}
+
+\begin{lstlisting}[style=rcode]
+mean_body_mass <- function(x) {
+  mean(x, na.rm = TREU)
+}
+\end{lstlisting}
+
+\lstinline|TREU| ist kein logischer Wert in R. R sucht deshalb nach einem
+Objekt mit diesem Namen und meldet:
+
+\begin{lstlisting}[style=textcode]
+object 'TREU' not found
+\end{lstlisting}
+
+Der Fehler wird möglicherweise zunächst von \lstinline|summarise()| gemeldet,
+entsteht aber tatsächlich im inneren Aufruf von \lstinline|mean()|.
+
+\subsection{Korrektur}
+
+\begin{lstlisting}[style=rcode]
+mean_body_mass <- function(x) {
+  mean(x, na.rm = TRUE)
+}
+
+summarise_species <- function(data) {
+  data |>
+    group_by(species) |>
+    summarise(
+      mean_mass = mean_body_mass(body_mass_g),
+      .groups = "drop"
+    )
+}
+\end{lstlisting}
+
+Bei verschachtelten Fehlermeldungen sollte deshalb insbesondere der Abschnitt
+\texttt{Caused by error in ...} gelesen werden.
+
+\section{Exercise 3: Rekursion mit \texttt{browser()} untersuchen}
+
+\subsection{Warum die Funktion fehlschlägt}
+
+\begin{lstlisting}[style=rcode]
+my_factorial <- function(n) {
+  if (n == 1) return(1)
+  return(n * my_factorial(n - 1))
+}
+\end{lstlisting}
+
+Für \lstinline|my_factorial(5)| erreicht die Rekursion den Abbruchfall
+\lstinline|n == 1|. Für \lstinline|my_factorial(0)| entsteht dagegen:
+
+\begin{lstlisting}[style=textcode]
+0 -> -1 -> -2 -> -3 -> ...
+\end{lstlisting}
+
+Für \lstinline|my_factorial(3.5)| gilt entsprechend:
+
+\begin{lstlisting}[style=textcode]
+3.5 -> 2.5 -> 1.5 -> 0.5 -> -0.5 -> ...
+\end{lstlisting}
+
+In beiden Fällen wird 1 niemals erreicht.
+
+\subsection{Interaktives Debugging}
+
+\begin{lstlisting}[style=rcode]
+my_factorial <- function(n) {
+  browser()
+  if (n == 1) return(1)
+  return(n * my_factorial(n - 1))
+}
+\end{lstlisting}
+
+\texttt{Browse[1]>} bedeutet, dass R die Ausführung angehalten hat. Wichtig ist
+der Namenskonflikt:
+
+\begin{lstlisting}[style=rcode]
+print(n)  # Wert der Variablen anzeigen
+n         # Debugger-Befehl "next"
+\end{lstlisting}
+
+\begin{longtable}{>{\ttfamily}p{0.16\textwidth}p{0.73\textwidth}}
+\toprule
+\normalfont Befehl & Bedeutung \\
+\midrule
+\endhead
+n & Nächste Anweisung ausführen.\\
+s & In einen Funktionsaufruf hineingehen.\\
+f & Aktuelle Funktion möglichst bis zum Ende ausführen.\\
+c & Bis zum nächsten Haltepunkt oder Fehler weiterlaufen.\\
+where & Den aktuellen Aufrufstapel anzeigen.\\
+Q & Das Debugging sofort abbrechen.\\
+\bottomrule
+\end{longtable}
+
+Mehrere Einträge bei \lstinline|where| zeigen mehrere noch nicht abgeschlossene
+rekursive Aufrufe. Die äußeren Aufrufe warten jeweils auf das Ergebnis des
+inneren Aufrufs. Die Zahl in \texttt{Browse[1]} ist weder der Wert von
+\lstinline|n| noch die Rekursionstiefe.
+
+\subsection{Korrektur}
+
+\begin{lstlisting}[style=rcode]
+my_factorial <- function(n) {
+  stopifnot(
+    n >= 0,
+    n == as.integer(n)
+  )
+
+  if (n <= 1) return(1)
+
+  return(n * my_factorial(n - 1))
+}
+\end{lstlisting}
+
+\lstinline|stopifnot()| lehnt negative Zahlen und Dezimalzahlen ab.
+\lstinline|n <= 1| behandelt sowohl \(0!\) als auch \(1!\) korrekt. Nach dem
+Debugging muss \lstinline|browser()| entfernt werden.
+
+\section{Exercise 4: \texttt{debug()} und \texttt{debugonce()}}
+
+\subsection{Fehleranalyse}
+
+\begin{lstlisting}[style=rcode]
+standardise <- function(x) {
+  (x - mean(x)) / sd(x)
+}
+
+debugonce(standardise)
+standardise(c(1, 2, NA, 4, 5))
+\end{lstlisting}
+
+Im Debugger ergibt sich:
+
+\begin{lstlisting}[style=rcode]
+mean(x)  # NA
+sd(x)    # NA
+\end{lstlisting}
+
+Damit wird faktisch \lstinline|(x - NA) / NA| berechnet. Durch die
+Weitergabe fehlender Werte werden alle Ergebnisse zu \lstinline|NA|.
+
+\subsection{Korrektur}
+
+\begin{lstlisting}[style=rcode]
+standardise <- function(x) {
+  (x - mean(x, na.rm = TRUE)) /
+    sd(x, na.rm = TRUE)
+}
+\end{lstlisting}
+
+Der ursprünglich fehlende Wert bleibt \lstinline|NA|. Er wird lediglich bei
+der Berechnung von Mittelwert und Standardabweichung ignoriert.
+
+\begin{longtable}{p{0.24\textwidth}p{0.27\textwidth}p{0.28\textwidth}}
+\toprule
+Werkzeug & Verhalten & Beenden \\
+\midrule
+\endhead
+\lstinline|browser()| & Haltepunkt direkt im Funktionskörper & Zeile aus der Funktion entfernen \\
+\lstinline|debugonce(f)| & Nur der nächste Aufruf wird debuggt & automatische Aufhebung \\
+\lstinline|debug(f)| & Jeder weitere Aufruf wird debuggt & \lstinline|undebug(f)| \\
+\bottomrule
+\end{longtable}
+
+\section{Exercise 5: Ein Quarto-Dokument debuggen}
+
+\subsection{Die drei Fehler}
+
+\begin{enumerate}
+  \item In \lstinline|filter(species = "Adelie")| wurde eine Argumentzuweisung
+  statt eines Vergleichs verwendet. Richtig ist:
+
+\begin{lstlisting}[style=rcode]
+filter(species == "Adelie")
+\end{lstlisting}
+
+  \item \lstinline|ggplot()|, \lstinline|aes()| und
+  \lstinline|geom_point()| stammen aus \texttt{ggplot2}. Das Paket muss im
+  Dokument explizit geladen werden:
+
+\begin{lstlisting}[style=rcode]
+library(ggplot2)
+\end{lstlisting}
+
+  \item \lstinline|echo=TREU| enthält erneut den Tippfehler
+  \lstinline|TREU|. Empfohlen ist die Quarto-Schreibweise:
+
+\begin{lstlisting}[style=textcode]
+```{r}
+#| echo: true
+summary(penguins)
+```
+\end{lstlisting}
+\end{enumerate}
+
+\subsection{Korrigiertes Dokument}
+
+\begin{lstlisting}[style=textcode]
+---
+title: "Penguin bill measurements"
+format: html
+---
+
+```{r}
+library(palmerpenguins)
+library(dplyr)
+library(ggplot2)
+```
+
+```{r}
+penguins |>
+  filter(species == "Adelie") |>
+  ggplot(aes(
+    x = bill_length_mm,
+    y = bill_depth_mm
+  )) +
+  geom_point()
+```
+
+```{r}
+#| echo: true
+summary(penguins)
+```
+\end{lstlisting}
+
+Gerendert wird mit:
+
+\begin{lstlisting}[style=textcode]
+quarto render broken.qmd
+\end{lstlisting}
+
+\subsection{Fehlerebenen}
+
+\begin{longtable}{p{0.48\textwidth}p{0.40\textwidth}}
+\toprule
+Hinweis & Wahrscheinliche Ebene \\
+\midrule
+\endhead
+\texttt{Error in filter()}, \texttt{object not found} & R \\
+\texttt{Quitting from ... [chunk-name]} & knitr stoppt beim Chunk \\
+Fehlerhafte Chunk-Option & knitr \\
+YAML-Fehler & YAML/Quarto \\
+Konvertierungsfehler & Quarto/Pandoc \\
+\texttt{LaTeX Error}, fehlende \texttt{.sty}-Datei & LaTeX \\
+\bottomrule
+\end{longtable}
+
+Quarto führt Chunks von oben nach unten aus. Deshalb wird zunächst nur der erste
+Fehler sichtbar. Dieser wird korrigiert, anschließend wird erneut gerendert.
+Ein PDF-Render benötigt zusätzlich eine LaTeX-Installation; ein fehlendes
+TeX-System ist kein R-Fehler.
+
+\section*{Kurzfazit}
+\addcontentsline{toc}{section}{Kurzfazit}
+
+\begin{itemize}
+  \item Bei \texttt{dplyr}-Funktionen muss die Auswertung von
+  Spaltenargumenten bewusst behandelt werden.
+  \item Verschachtelte Fehlermeldungen müssen bis zur inneren Ursache gelesen
+  werden.
+  \item \texttt{browser()}, \texttt{debugonce()} und \texttt{debug()} halten
+  Funktionen auf unterschiedliche Weise an, verwenden aber dieselben
+  Debugger-Befehle.
+  \item Rekursive Funktionen benötigen einen erreichbaren Abbruchfall und eine
+  Prüfung ihres Eingabebereichs.
+  \item Beim Quarto-Rendering muss zwischen R, knitr, Quarto/Pandoc und LaTeX
+  unterschieden werden.
+\end{itemize}
+
+\end{document}
