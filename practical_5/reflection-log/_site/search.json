@@ -1,0 +1,44 @@
+[
+  {
+    "objectID": "refelction_week04.html",
+    "href": "refelction_week04.html",
+    "title": "Reflection Log – Week 4",
+    "section": "",
+    "text": "This week, I learned the difference between a local Git repository and a remote repository on GitHub."
+  },
+  {
+    "objectID": "refelction_week04.html#what-i-learned",
+    "href": "refelction_week04.html#what-i-learned",
+    "title": "Reflection Log – Week 4",
+    "section": "",
+    "text": "This week, I learned the difference between a local Git repository and a remote repository on GitHub."
+  },
+  {
+    "objectID": "refelction_week04.html#what-was-difficult",
+    "href": "refelction_week04.html#what-was-difficult",
+    "title": "Reflection Log – Week 4",
+    "section": "What was difficult?",
+    "text": "What was difficult?\nThe difference between git pull and git fetch was initially unclear."
+  },
+  {
+    "objectID": "refelction_week04.html#what-will-i-do-differently",
+    "href": "refelction_week04.html#what-will-i-do-differently",
+    "title": "Reflection Log – Week 4",
+    "section": "What will I do differently?",
+    "text": "What will I do differently?\nI will commit smaller changes more frequently and push at the end of each working session."
+  },
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About",
+    "section": "",
+    "text": "About this site"
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "reflection-log",
+    "section": "",
+    "text": "This is a Quarto website.\nTo learn more about Quarto websites visit https://quarto.org/docs/websites.\n\n\n# A tibble: 6 × 8\n  species island    bill_length_mm bill_depth_mm flipper_length_mm body_mass_g\n  &lt;fct&gt;   &lt;fct&gt;              &lt;dbl&gt;         &lt;dbl&gt;             &lt;int&gt;       &lt;int&gt;\n1 Adelie  Torgersen           39.1          18.7               181        3750\n2 Adelie  Torgersen           39.5          17.4               186        3800\n3 Adelie  Torgersen           40.3          18                 195        3250\n4 Adelie  Torgersen           NA            NA                  NA          NA\n5 Adelie  Torgersen           36.7          19.3               193        3450\n6 Adelie  Torgersen           39.3          20.6               190        3650\n# ℹ 2 more variables: sex &lt;fct&gt;, year &lt;int&gt;\n\n\n\n\nShow code\npenguins %&gt;%\n  filter(species == \"Adelie\") %&gt;%\n  ggplot(aes(\n    x = bill_length_mm,\n    y = bill_depth_mm\n  )) +\n  geom_point(na.rm = TRUE)\n\n\n\n\n\n\n\n\nFigure 1: Scatter plot of bill length vs bill depth for Adelie penguins"
+  }
+]
