@@ -1,4 +1,39 @@
-@"
+# Quarto build artefacts
 .quarto/
+_site/
+_freeze/
 *_files/
-"@ 
+*.quarto_ipynb
+*.knit.md
+
+# LaTeX build artefacts
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.log
+*.lot
+*.nav
+*.out
+*.run.xml
+*.snm
+*.synctex.gz
+*.toc
+*.vrb
+*.xdv
+
+# Local LaTeX verification directories
+.latex-verify/
+
+# R session artefacts
+.Rhistory
+.RData
+.Rproj.user/
+
+# Operating-system and editor noise
+.DS_Store
+Thumbs.db
+*~

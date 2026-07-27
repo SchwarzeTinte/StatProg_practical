@@ -1,0 +1,38 @@
+---
+title: "reflection-log"
+---
+
+This is a Quarto website.
+
+To learn more about Quarto websites visit <https://quarto.org/docs/websites>.
+
+```{r}
+#| label: setup
+#| include: false
+
+library(palmerpenguins)
+library(ggplot2)
+library(dplyr)
+```
+
+```{r}
+#| label: penguins-glimpse
+#| echo: false
+#| warning: false
+head(penguins)
+
+```
+
+```{r}
+#| label: fig-penguins-plot
+#| fig-cap: "Scatter plot of bill length vs bill depth for Adelie penguins"
+
+
+penguins %>%
+  filter(species == "Adelie") %>%
+  ggplot(aes(
+    x = bill_length_mm,
+    y = bill_depth_mm
+  )) +
+  geom_point(na.rm = TRUE)
+```

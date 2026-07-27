@@ -1,0 +1,914 @@
+\documentclass[11pt,a4paper]{ctexart}
+
+\usepackage[margin=2.2cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{parskip}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!50!black,
+  urlcolor=blue!60!black
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{StatProg2}
+\rhead{Practical 2: Functions}
+\cfoot{\thepage}
+
+\definecolor{codebg}{RGB}{247,247,247}
+\definecolor{codegreen}{RGB}{0,110,60}
+\definecolor{codepurple}{RGB}{120,40,120}
+\definecolor{codegray}{RGB}{100,100,100}
+
+\lstdefinelanguage{R}{
+  morekeywords={
+    function,if,else,for,while,repeat,in,next,break,TRUE,FALSE,NULL,
+    NA,NaN,Inf,return,library
+  },
+  sensitive=true,
+  morecomment=[l]{\#},
+  morestring=[b]"
+}
+
+\lstset{
+  language=R,
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue!65!black}\bfseries,
+  commentstyle=\color{codegreen},
+  stringstyle=\color{codepurple},
+  numberstyle=\tiny\color{codegray},
+  numbers=left,
+  numbersep=8pt,
+  frame=single,
+  rulecolor=\color{black!15},
+  breaklines=true,
+  showstringspaces=false,
+  tabsize=2,
+  columns=fullflexible
+}
+
+\setlist[itemize]{leftmargin=2em}
+\setlist[enumerate]{leftmargin=2em}
+
+\title{\textbf{StatProg2 -- Practical 2: Functions}\\
+\large 题目、答案与知识点整理 / Aufgaben, Lösungen und Konzepte}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Exercise 1: Naming Functions}
+
+\subsection{Task 1: 给函数重新命名}
+
+给定函数：
+
+\begin{lstlisting}
+f1 <- function(string, prefix) {
+  str_sub(string, 1, str_length(prefix)) == prefix
+}
+
+f3 <- function(x, y) {
+  rep(y, length.out = length(x))
+}
+\end{lstlisting}
+
+\subsubsection*{答案}
+
+第一个函数检查一个字符串是否以指定前缀开始，因此可以命名为：
+
+\begin{lstlisting}
+has_prefix <- function(string, prefix) {
+  str_sub(string, 1, str_length(prefix)) == prefix
+}
+\end{lstlisting}
+
+第二个函数把 \texttt{y} 重复到与 \texttt{x} 相同的长度，因此可以命名为：
+
+\begin{lstlisting}
+recycle_to_length <- function(x, y) {
+  rep(y, length.out = length(x))
+}
+\end{lstlisting}
+
+也可以使用更明确的参数名：
+
+\begin{lstlisting}
+recycle_to_length <- function(value, template) {
+  rep(value, length.out = length(template))
+}
+\end{lstlisting}
+
+\subsubsection*{知识点}
+
+\begin{itemize}
+  \item 好的函数名通常使用动词或动词短语，例如
+  \texttt{has\_prefix()}、\texttt{calculate\_mean()}。
+  \item 参数名应该说明参数的角色。与 \texttt{x}、\texttt{y} 相比，
+  \texttt{string}、\texttt{prefix} 更容易理解。
+  \item R 项目中通常使用 \texttt{snake\_case}。
+\end{itemize}
+
+\subsubsection*{Deutsch}
+
+Die erste Funktion prüft, ob ein String mit einem bestimmten Präfix beginnt.
+Ein sinnvoller Name ist daher \texttt{has\_prefix()}.
+
+Die zweite Funktion recycelt einen Wert oder Vektor, bis die Länge eines
+Referenzvektors erreicht ist. Ein geeigneter Name ist
+\texttt{recycle\_to\_length()}.
+
+\subsection{Task 2: \texttt{rnorm()} oder \texttt{norm\_r()}?}
+
+R verwendet für Wahrscheinlichkeitsverteilungen ein einheitliches Schema:
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Präfix & Bedeutung & Normalverteilung \\
+\midrule
+\texttt{r} & Zufallswerte erzeugen & \texttt{rnorm()} \\
+\texttt{d} & Dichte & \texttt{dnorm()} \\
+\texttt{p} & kumulative Wahrscheinlichkeit & \texttt{pnorm()} \\
+\texttt{q} & Quantil & \texttt{qnorm()} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsubsection*{Warum könnte \texttt{norm\_r()} besser sein?}
+
+\begin{itemize}
+  \item Alle Funktionen der Normalverteilung würden mit \texttt{norm\_}
+  beginnen.
+  \item Durch Autovervollständigung wären
+  \texttt{norm\_r()}, \texttt{norm\_d()}, \texttt{norm\_p()} und
+  \texttt{norm\_q()} gemeinsam sichtbar.
+\end{itemize}
+
+\subsubsection*{Warum ist \texttt{rnorm()} trotzdem sinnvoller?}
+
+\begin{itemize}
+  \item Die Namen folgen einer einheitlichen R-Konvention.
+  \item Das gleiche Schema gilt für andere Verteilungen:
+\end{itemize}
+
+\begin{lstlisting}
+rbinom()
+dbinom()
+pbinom()
+qbinom()
+
+runif()
+dunif()
+punif()
+qunif()
+\end{lstlisting}
+
+Wenn man die Präfixe \texttt{r}, \texttt{d}, \texttt{p} und \texttt{q}
+kennt, kann man viele Funktionsnamen vorhersagen.
+
+Noch explizitere Namen wären:
+
+\begin{lstlisting}
+normal_sample()
+normal_density()
+normal_cdf()
+normal_quantile()
+\end{lstlisting}
+
+\section{Exercise 2: Funktionen schreiben und testen}
+
+\subsection{Task 1: Penguin-Plot in eine Funktion verpacken}
+
+\subsubsection*{Lösung}
+
+\begin{lstlisting}
+library(palmerpenguins)
+library(tidyverse)
+
+make_label <- function(variable_name) {
+  str_replace_all(variable_name, "_", " ") %>%
+    str_to_title()
+}
+
+scatter_penguins <- function(
+  species_name,
+  x_var = "bill_length_mm",
+  y_var = "bill_depth_mm"
+) {
+  penguins %>%
+    filter(species == .env$species_name) %>%
+    ggplot(
+      aes(
+        x = .data[[x_var]],
+        y = .data[[y_var]]
+      )
+    ) +
+    geom_point() +
+    labs(
+      title = paste(
+        "Scatter plot of",
+        make_label(x_var),
+        "vs",
+        make_label(y_var),
+        "for",
+        species_name,
+        "penguins"
+      ),
+      x = make_label(x_var),
+      y = make_label(y_var)
+    )
+}
+\end{lstlisting}
+
+Aufruf:
+
+\begin{lstlisting}
+scatter_penguins("Adelie")
+
+scatter_penguins(
+  "Gentoo",
+  "flipper_length_mm",
+  "body_mass_g"
+)
+\end{lstlisting}
+
+\subsubsection*{关键知识点}
+
+\begin{itemize}
+  \item \texttt{species} 是数据框中的列。
+  \item \texttt{.env\$species\_name} 表示函数环境中的参数。
+  \item \texttt{.data[[x\_var]]} 根据字符串形式的列名访问数据列。
+  \item R 函数默认返回最后一个表达式，因此不一定需要
+  \texttt{return(plot)}。
+\end{itemize}
+
+\subsubsection*{常见错误}
+
+错误写法：
+
+\begin{lstlisting}
+aes(y = .data[[y = y_var]])
+\end{lstlisting}
+
+正确写法：
+
+\begin{lstlisting}
+aes(y = .data[[y_var]])
+\end{lstlisting}
+
+\texttt{.env} 只能在 \texttt{filter()}、\texttt{mutate()}、
+\texttt{aes()} 等数据掩码环境中使用。在普通的 \texttt{paste()} 中应直接写：
+
+\begin{lstlisting}
+paste(..., species_name, ...)
+\end{lstlisting}
+
+另外，\texttt{"Torgersen"} 是 \texttt{island} 的取值，不是
+\texttt{species}。企鹅物种是：
+
+\begin{lstlisting}
+Adelie
+Chinstrap
+Gentoo
+\end{lstlisting}
+
+\subsection{Task 2: Docstrings mit roxygen2}
+
+\begin{lstlisting}
+#' Convert a variable name into a readable label
+#'
+#' Replaces underscores with spaces and converts the string
+#' to title case.
+#'
+#' @param variable_name A character string containing a
+#'   variable name.
+#' @return A readable character string.
+#'
+#' @examples
+#' make_label("bill_length_mm")
+make_label <- function(variable_name) {
+  str_replace_all(variable_name, "_", " ") %>%
+    str_to_title()
+}
+
+
+#' Create a scatter plot for one penguin species
+#'
+#' @param species_name A penguin species. Expected values are
+#'   "Adelie", "Chinstrap", and "Gentoo".
+#' @param x_var Name of the numeric x-axis variable.
+#' @param y_var Name of the numeric y-axis variable.
+#' @return A ggplot object.
+#'
+#' @examples
+#' scatter_penguins("Adelie")
+#' scatter_penguins(
+#'   "Gentoo",
+#'   "flipper_length_mm",
+#'   "body_mass_g"
+#' )
+scatter_penguins <- function(
+  species_name,
+  x_var = "bill_length_mm",
+  y_var = "bill_depth_mm"
+) {
+  penguins %>%
+    filter(species == .env$species_name) %>%
+    ggplot(
+      aes(
+        x = .data[[x_var]],
+        y = .data[[y_var]]
+      )
+    ) +
+    geom_point() +
+    labs(
+      title = paste(
+        make_label(x_var),
+        "vs.",
+        make_label(y_var),
+        "for",
+        species_name,
+        "penguins"
+      ),
+      x = make_label(x_var),
+      y = make_label(y_var)
+    )
+}
+\end{lstlisting}
+
+\subsubsection*{Deutsch}
+
+Roxygen2-Dokumentation beginnt mit \texttt{\#'}.
+\texttt{@param} beschreibt Argumente, \texttt{@return} den Rückgabewert
+und \texttt{@examples} typische Aufrufe.
+
+\subsection{Task 3: Randfälle testen}
+
+\begin{lstlisting}
+scatter_penguins("Penguin")
+scatter_penguins("Adelie", x_var = "fluffiness")
+scatter_penguins("Adelie", x_var = "island")
+\end{lstlisting}
+
+\begin{center}
+\begin{tabular}{p{3.5cm}p{5.8cm}p{5.2cm}}
+\toprule
+Test & Verhalten vor Validierung & Problem \\
+\midrule
+Ungültige Art & leerer Plot, meist kein Fehler &
+stiller Fehler \\
+Nicht vorhandene Spalte & Fehler aus \texttt{ggplot2} &
+Fehlermeldung ist relativ technisch \\
+Nicht numerische Spalte & Plot mit diskreter Achse &
+technisch gültig, aber gegen die Funktionsidee \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsubsection*{中文说明}
+
+\begin{itemize}
+  \item 不存在的物种产生 0 行数据，因此通常只得到空图。
+  \item 不存在的列会在 \texttt{ggplot2} 计算映射时出错。
+  \item 分类变量可以被 \texttt{ggplot2} 当作离散轴，因此不一定报错。
+\end{itemize}
+
+\subsection{Task 4: Hilfsfunktionen verwenden}
+
+\begin{lstlisting}
+make_label <- function(variable_name) {
+  str_replace_all(variable_name, "_", " ") %>%
+    str_to_title()
+}
+
+filter_penguin_species <- function(data, species_name) {
+  data %>%
+    filter(species == .env$species_name)
+}
+
+scatter_plot <- function(data, x_var, y_var, title) {
+  ggplot(
+    data,
+    aes(
+      x = .data[[x_var]],
+      y = .data[[y_var]]
+    )
+  ) +
+    geom_point() +
+    labs(
+      title = title,
+      x = make_label(x_var),
+      y = make_label(y_var)
+    )
+}
+
+scatter_penguins <- function(
+  species_name,
+  x_var = "bill_length_mm",
+  y_var = "bill_depth_mm"
+) {
+  title <- paste(
+    "Scatter plot of",
+    make_label(x_var),
+    "vs",
+    make_label(y_var),
+    "for",
+    species_name,
+    "penguins"
+  )
+
+  penguins %>%
+    filter_penguin_species(species_name) %>%
+    scatter_plot(
+      x_var = x_var,
+      y_var = y_var,
+      title = title
+    )
+}
+\end{lstlisting}
+
+\subsubsection*{知识点}
+
+每个辅助函数只负责一个任务：
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Funktion & Aufgabe \\
+\midrule
+\texttt{make\_label()} & lesbare Achsenbeschriftung \\
+\texttt{filter\_penguin\_species()} & Daten filtern \\
+\texttt{scatter\_plot()} & Scatterplot erstellen \\
+\texttt{scatter\_penguins()} & einzelne Schritte koordinieren \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Exercise 3: Input Validation}
+
+\subsection{Task 1: Eingaben prüfen}
+
+\begin{lstlisting}
+scatter_penguins <- function(
+  species_name,
+  x_var = "bill_length_mm",
+  y_var = "bill_depth_mm"
+) {
+  valid_species <- c("Adelie", "Chinstrap", "Gentoo")
+
+  if (!species_name %in% valid_species) {
+    stop(
+      "`species_name` must be one of: ",
+      paste(valid_species, collapse = ", "),
+      ". You supplied: \"",
+      species_name,
+      "\"."
+    )
+  }
+
+  stopifnot(
+    "`x_var` must be a column of `penguins`" =
+      x_var %in% names(penguins),
+
+    "`y_var` must be a column of `penguins`" =
+      y_var %in% names(penguins),
+
+    "`x_var` must be numeric" =
+      is.numeric(penguins[[x_var]]),
+
+    "`y_var` must be numeric" =
+      is.numeric(penguins[[y_var]])
+  )
+
+  penguins %>%
+    filter(species == .env$species_name) %>%
+    ggplot(
+      aes(
+        x = .data[[x_var]],
+        y = .data[[y_var]]
+      )
+    ) +
+    geom_point() +
+    labs(
+      title = paste(
+        make_label(x_var),
+        "vs.",
+        make_label(y_var),
+        "for",
+        species_name,
+        "penguins"
+      ),
+      x = make_label(x_var),
+      y = make_label(y_var)
+    )
+}
+\end{lstlisting}
+
+\subsubsection*{检查顺序}
+
+必须先检查列是否存在，再检查列是否为数值：
+
+\[
+\text{Spalte vorhanden?}
+\longrightarrow
+\text{Datentyp numerisch?}
+\]
+
+\subsubsection*{Testfälle}
+
+\begin{lstlisting}
+scatter_penguins("Emperor")
+# Fehler: ungueltige Art
+
+scatter_penguins("Adelie", "fluffiness", "body_mass_g")
+# Fehler: x_var ist keine Spalte
+
+scatter_penguins("Adelie", "island", "body_mass_g")
+# Fehler: x_var muss numerisch sein
+\end{lstlisting}
+
+\subsection{Task 2: Alte und neue Fehlermeldungen vergleichen}
+
+Die validierte Version ist leichter zu debuggen:
+
+\begin{itemize}
+  \item Sie scheitert früh (\emph{fail fast}).
+  \item Sie nennt direkt das fehlerhafte Argument.
+  \item Sie verhindert stille Fehler wie leere Plots.
+  \item Sie erklärt, welche Eingaben zulässig sind.
+\end{itemize}
+
+\subsubsection*{Musterantwort}
+
+\begin{quote}
+The validated version is easier to debug because it fails early, uses the
+names of the function arguments, avoids silent failures, and tells the user
+how to correct the input.
+\end{quote}
+
+\section{Exercise 4: Iteration und Rekursion}
+
+\subsection{Task 1: Fibonacci iterativ}
+
+Die Fibonacci-Folge ist definiert durch:
+
+\[
+F(0)=0,\qquad F(1)=1,
+\]
+
+und für \(n>1\):
+
+\[
+F(n)=F(n-1)+F(n-2).
+\]
+
+\begin{lstlisting}
+fib_iterative <- function(n) {
+  if (n == 0) {
+    return(0)
+  } else if (n == 1) {
+    return(1)
+  }
+
+  a <- 0
+  b <- 1
+
+  for (i in 2:n) {
+    temp <- a + b
+    a <- b
+    b <- temp
+  }
+
+  return(b)
+}
+\end{lstlisting}
+
+Beispiele:
+
+\begin{lstlisting}
+fib_iterative(0)
+# 0
+
+fib_iterative(5)
+# 5
+
+fib_iterative(10)
+# 55
+\end{lstlisting}
+
+\subsubsection*{中文解释}
+
+初始时：
+
+\[
+a=F(0)=0,\qquad b=F(1)=1.
+\]
+
+每一轮先计算：
+
+\[
+\texttt{temp}=a+b,
+\]
+
+然后把两个保存值向后移动：
+
+\[
+a\leftarrow b,\qquad b\leftarrow \texttt{temp}.
+\]
+
+使用 \texttt{temp} 是为了避免旧的 \texttt{a} 在加法前被覆盖。
+
+\subsection{Task 2: Fibonacci rekursiv}
+
+\begin{lstlisting}
+fib_recursive <- function(n) {
+  if (n == 0) {
+    return(0)
+  } else if (n == 1) {
+    return(1)
+  }
+
+  return(
+    fib_recursive(n - 1) +
+      fib_recursive(n - 2)
+  )
+}
+\end{lstlisting}
+
+递归函数包含：
+
+\begin{enumerate}
+  \item 基本情况：\texttt{n == 0} 和 \texttt{n == 1}；
+  \item 递归情况：调用 \texttt{fib\_recursive(n - 1)} 和
+  \texttt{fib\_recursive(n - 2)}。
+\end{enumerate}
+
+Für \(F(5)\):
+
+\[
+F(5)=F(4)+F(3)=3+2=5.
+\]
+
+Ohne Basisfälle würde sich die Funktion unbegrenzt weiter aufrufen.
+
+\subsection{Task 3: Laufzeit vergleichen}
+
+\begin{lstlisting}
+system.time(fib_iterative(30))
+system.time(fib_recursive(30))
+\end{lstlisting}
+
+Beide Funktionen liefern:
+
+\[
+F(30)=832040.
+\]
+
+Die iterative Variante ist aber wesentlich schneller.
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Eigenschaft & Iterativ & Naiv rekursiv \\
+\midrule
+Berechnung & jedes Ergebnis einmal & viele Wiederholungen \\
+Laufzeit & \(O(n)\) & ungefähr \(O(\varphi^n)\) \\
+Zusatzspeicher & \(O(1)\) & Aufrufstapel \(O(n)\) \\
+Lesbarkeit & etwas länger & nahe an der Formel \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Die Rekursion ist nicht grundsätzlich langsam. Das Problem ist hier, dass
+dieselben Teilprobleme mehrfach berechnet werden. Memoization könnte diese
+Wiederholungen vermeiden.
+
+\section{Exercise 5: Refactoring}
+
+\subsection{Task 1.1: Wiederholungen in \texttt{summarise\_species()}}
+
+Die ursprüngliche Funktion wiederholt:
+
+\begin{itemize}
+  \item die Filterbedingung für jede Art,
+  \item die Berechnung von Mittelwerten,
+  \item \texttt{mean(..., na.rm = TRUE)},
+  \item die Ausgabe mit \texttt{cat()},
+  \item lange \texttt{if}/\texttt{else if}-Zweige.
+\end{itemize}
+
+Trotz ihrer Länge enthält sie nur drei Ideen:
+
+\begin{enumerate}
+  \item auf eine Art filtern,
+  \item mittlere Schnabellänge und Körpermasse berechnen,
+  \item Ergebnisse ausgeben.
+\end{enumerate}
+
+\subsection{Task 1.2: \texttt{summarise\_species()} refaktorieren}
+
+\begin{lstlisting}
+summarise_species <- function(
+  species_name,
+  data = penguins
+) {
+  summary_row <- data %>%
+    filter(species == .env$species_name) %>%
+    summarise(
+      mean_bill = mean(
+        bill_length_mm,
+        na.rm = TRUE
+      ),
+      mean_mass = mean(
+        body_mass_g,
+        na.rm = TRUE
+      )
+    )
+
+  cat(
+    species_name,
+    "-- mean bill:",
+    summary_row$mean_bill,
+    "mean mass:",
+    summary_row$mean_mass,
+    "\n"
+  )
+}
+\end{lstlisting}
+
+Aufrufe:
+
+\begin{lstlisting}
+summarise_species("Adelie")
+summarise_species("Gentoo")
+summarise_species("Chinstrap")
+\end{lstlisting}
+
+\subsubsection*{Warum funktioniert eine vierte Art?}
+
+Die Funktion enthält keine fest codierten Berechnungen für einzelne Arten.
+Sie verwendet direkt \texttt{species\_name}. Wenn der Datensatz später eine
+weitere Art enthält, kann sie ohne neuen \texttt{else if}-Zweig verarbeitet
+werden.
+
+Robustere Variante:
+
+\begin{lstlisting}
+summarise_species <- function(
+  species_name,
+  data = penguins
+) {
+  valid_species <- unique(as.character(data$species))
+
+  if (!species_name %in% valid_species) {
+    stop(
+      "`species_name` must be one of: ",
+      paste(valid_species, collapse = ", ")
+    )
+  }
+
+  summary_row <- data %>%
+    filter(species == .env$species_name) %>%
+    summarise(
+      mean_bill = mean(
+        bill_length_mm,
+        na.rm = TRUE
+      ),
+      mean_mass = mean(
+        body_mass_g,
+        na.rm = TRUE
+      )
+    )
+
+  cat(
+    species_name,
+    "-- mean bill:",
+    summary_row$mean_bill,
+    "mean mass:",
+    summary_row$mean_mass,
+    "\n"
+  )
+
+  invisible(summary_row)
+}
+\end{lstlisting}
+
+\subsection{Task 2: \texttt{penguin\_report()} in Hilfsfunktionen zerlegen}
+
+\begin{lstlisting}
+load_penguins <- function() {
+  palmerpenguins::penguins
+}
+
+drop_missing <- function(data, cols) {
+  data[complete.cases(data[, cols]), ]
+}
+
+print_summary <- function(data) {
+  cat("n =", nrow(data), "\n")
+  cat(
+    "mean bill length:",
+    mean(data$bill_length_mm),
+    "\n"
+  )
+  cat(
+    "mean body mass:",
+    mean(data$body_mass_g),
+    "\n"
+  )
+}
+
+scatter_bill_vs_mass <- function(data, title) {
+  ggplot(
+    data,
+    aes(
+      x = bill_length_mm,
+      y = body_mass_g
+    )
+  ) +
+    geom_point() +
+    labs(title = title)
+}
+
+penguin_report <- function(species_name) {
+  data <- load_penguins() %>%
+    drop_missing(
+      c(
+        "bill_length_mm",
+        "body_mass_g"
+      )
+    ) %>%
+    filter(species == .env$species_name)
+
+  print_summary(data)
+
+  scatter_bill_vs_mass(
+    data,
+    title = paste(
+      "Bill length vs. body mass --",
+      species_name
+    )
+  )
+}
+\end{lstlisting}
+
+Aufruf:
+
+\begin{lstlisting}
+penguin_report("Gentoo")
+\end{lstlisting}
+
+\subsubsection*{Vorteile der Refaktorierung}
+
+\begin{itemize}
+  \item Jede Funktion übernimmt nur eine Aufgabe.
+  \item Einzelne Schritte können separat getestet werden.
+  \item Reinigungs- und Plotfunktionen sind wiederverwendbar.
+  \item Die Hauptfunktion liest sich wie ein Rezept:
+\end{itemize}
+
+\[
+\text{laden}
+\rightarrow
+\text{bereinigen}
+\rightarrow
+\text{filtern}
+\rightarrow
+\text{zusammenfassen}
+\rightarrow
+\text{visualisieren}.
+\]
+
+\section{Zusammenfassung der wichtigsten Konzepte}
+
+\begin{enumerate}
+  \item Funktionen sollten klare Namen und verständliche Parameter besitzen.
+  \item Wiederholte Codeblöcke sollten durch Funktionen ersetzt werden.
+  \item Veränderliche Teile gehören in Funktionsargumente.
+  \item \texttt{.data[[name]]} greift auf eine Spalte zu, deren Name als
+  String gespeichert ist.
+  \item \texttt{.env\$name} greift innerhalb eines Data-Masking-Kontexts
+  auf ein Funktionsargument zu.
+  \item Eingaben sollten früh geprüft werden.
+  \item Gute Fehlermeldungen nennen das Argument, das Problem und möglichst
+  die erlaubten Werte.
+  \item Rekursion benötigt einen Basisfall.
+  \item Naive Fibonacci-Rekursion ist wegen mehrfacher Berechnung langsam.
+  \item Große Funktionen sollten in kleine Hilfsfunktionen mit klarer
+  Verantwortung zerlegt werden.
+\end{enumerate}
+
+\end{document}
