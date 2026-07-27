@@ -1,0 +1,1039 @@
+% !TeX program = xelatex
+\documentclass[11pt,a4paper,fontset=fandol]{ctexart}
+
+\usepackage[a4paper,margin=2.2cm]{geometry}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage[most]{tcolorbox}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{microtype}
+
+\definecolor{codebg}{HTML}{F5F7FA}
+\definecolor{codeframe}{HTML}{D8DEE9}
+\definecolor{gitblue}{HTML}{275D8C}
+\definecolor{warningbg}{HTML}{FFF7E6}
+\definecolor{warningframe}{HTML}{D98E04}
+\definecolor{infobg}{HTML}{EEF6FC}
+\definecolor{infoframe}{HTML}{3572A5}
+\definecolor{successbg}{HTML}{EFF8F1}
+\definecolor{successframe}{HTML}{3B7D44}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=gitblue,
+  urlcolor=gitblue,
+  pdftitle={StatProg2 Practical 4: Version Control mit Git und GitHub},
+  pdfauthor={StatProg2 Wiederholungsnotiz}
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{StatProg2}
+\rhead{Practical 4: Version Control}
+\cfoot{\thepage}
+\setlength{\headheight}{14pt}
+
+\setlist[itemize]{leftmargin=2em,itemsep=0.25em}
+\setlist[enumerate]{leftmargin=2em,itemsep=0.35em}
+\renewcommand{\arraystretch}{1.25}
+
+\lstdefinestyle{terminal}{
+  backgroundcolor=\color{codebg},
+  frame=single,
+  rulecolor=\color{codeframe},
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{gitblue}\bfseries,
+  commentstyle=\color{gray},
+  showstringspaces=false,
+  breaklines=true,
+  columns=fullflexible,
+  keepspaces=true,
+  xleftmargin=0.5em,
+  xrightmargin=0.5em,
+  aboveskip=0.8em,
+  belowskip=0.8em
+}
+
+\newtcolorbox{infobox}[1][]{
+  colback=infobg,
+  colframe=infoframe,
+  title={#1},
+  fonttitle=\bfseries,
+  boxrule=0.7pt,
+  arc=2pt
+}
+
+\newtcolorbox{warningbox}[1][]{
+  colback=warningbg,
+  colframe=warningframe,
+  title={#1},
+  fonttitle=\bfseries,
+  boxrule=0.7pt,
+  arc=2pt
+}
+
+\newtcolorbox{summarybox}[1][]{
+  colback=successbg,
+  colframe=successframe,
+  title={#1},
+  fonttitle=\bfseries,
+  boxrule=0.7pt,
+  arc=2pt
+}
+
+\newcommand{\code}[1]{\texttt{\detokenize{#1}}}
+
+\title{\textbf{Statistical Programming II}\\
+Practical 4: Version Control with Git and GitHub\\[0.4em]
+\large 中德双语复习笔记}
+\author{}
+\date{Sommersemester 2026}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\part{中文详解}
+
+\section{本次 Practical 的目标}
+
+Practical 4 的重点不是孤立地背诵 Git 命令，而是完整练习一次真实的版本控制流程：
+
+\begin{center}
+\textbf{创建本地仓库}
+$\rightarrow$
+\textbf{建立 commit 历史}
+$\rightarrow$
+\textbf{连接 GitHub}
+$\rightarrow$
+\textbf{push / pull}
+$\rightarrow$
+\textbf{检查并恢复旧版本}
+\end{center}
+
+完成后，应当能够回答以下问题：
+
+\begin{itemize}
+  \item 文件保存、\code{git add}、\code{git commit} 和 \code{git push} 分别做了什么？
+  \item 本地仓库与 GitHub 远程仓库之间是什么关系？
+  \item 为什么需要 \code{.gitignore}？
+  \item 如何查看历史并恢复某一个文件？
+  \item \code{git fetch} 和 \code{git pull} 有什么区别？
+\end{itemize}
+
+\section{Git 的核心模型}
+
+Git 工作流中可以区分四个位置：
+
+\begin{table}[htbp]
+\centering
+\begin{tabularx}{\textwidth}{
+  >{\raggedright\arraybackslash}p{3.2cm}
+  >{\raggedright\arraybackslash}X
+  >{\raggedright\arraybackslash}p{4.0cm}}
+\toprule
+\textbf{位置} & \textbf{含义} & \textbf{相关操作或命令} \\
+\midrule
+Working Directory
+& 当前正在编辑的文件
+& 编辑并保存文件 \\
+
+Staging Area
+& 为下一次 commit 准备好的修改
+& \code{git add} \\
+
+Local Repository
+& 电脑中保存的 commit 历史
+& \code{git commit}、\code{git log} \\
+
+Remote Repository
+& GitHub 等平台上的远程仓库
+& \code{git push}、\code{git fetch}、\code{git pull} \\
+\bottomrule
+\end{tabularx}
+\caption{Git 中的四个主要位置}
+\end{table}
+
+\begin{center}
+\textbf{修改文件}
+$\xrightarrow{\texttt{git add}}$
+\textbf{暂存区}
+$\xrightarrow{\texttt{git commit}}$
+\textbf{本地历史}
+$\xrightarrow{\texttt{git push}}$
+\textbf{GitHub}
+\end{center}
+
+\begin{infobox}[最容易混淆的地方]
+\code{git add} 不会创建版本，\code{git commit} 也不会自动上传 GitHub。
+
+\begin{itemize}
+  \item \code{git add}：选择哪些修改进入下一次 commit。
+  \item \code{git commit}：在本地创建一个正式版本。
+  \item \code{git push}：把本地已有的 commit 上传到远程仓库。
+\end{itemize}
+\end{infobox}
+
+\section{Exercise 0：检查 Git 设置和仓库状态}
+
+\subsection{检查用户名和邮箱}
+
+\begin{lstlisting}[style=terminal]
+git config --global user.name
+git config --global user.email
+\end{lstlisting}
+
+这些信息会记录在 commit 中，用于说明是谁创建了该版本。若尚未设置，可以使用：
+
+\begin{lstlisting}[style=terminal]
+git config --global user.name "Youpeng Jiang"
+git config --global user.email "you@example.com"
+\end{lstlisting}
+
+\code{--global} 表示该设置对当前电脑上的所有 Git 仓库生效。邮箱最好使用 GitHub
+账户中已经验证的邮箱，或 GitHub 提供的 \code{noreply} 邮箱。即使邮箱未验证，
+commit 本身依然有效，但 GitHub 可能不会把它关联到个人贡献记录。
+
+\subsection{进入 Practical 3 文件夹}
+
+\begin{lstlisting}[style=terminal]
+cd path/to/your/practical3-folder
+\end{lstlisting}
+
+Windows Git Bash 示例：
+
+\begin{lstlisting}[style=terminal]
+cd "/c/Data/StatProg2/practical_3"
+\end{lstlisting}
+
+如果路径中有空格，应当使用引号包住完整路径。
+
+\subsection{检查 commit 历史和远程仓库}
+
+\begin{lstlisting}[style=terminal]
+git log --oneline
+git remote -v
+git status
+\end{lstlisting}
+
+\begin{itemize}
+  \item \code{git log --oneline}：用简洁格式查看 commit 历史。
+  \item \code{git remote -v}：查看本地仓库连接了哪些远程地址。
+  \item \code{git status}：查看当前分支、修改、暂存和未跟踪文件。
+\end{itemize}
+
+\code{git log} 的输出可能类似：
+
+\begin{lstlisting}[style=terminal]
+8bd527a fix factorial function
+34dc819 add debugging exercise
+\end{lstlisting}
+
+左边是 commit hash 的缩写，右边是 commit message。如果终端进入分页显示，
+按 \code{q} 即可退出。
+
+\code{git remote -v} 的输出可能类似：
+
+\begin{lstlisting}[style=terminal]
+origin  git@github.com:username/statprog-debugging.git (fetch)
+origin  git@github.com:username/statprog-debugging.git (push)
+\end{lstlisting}
+
+\code{origin} 是远程仓库的默认名称。它是惯例，而不是不可更改的固定关键词。
+
+\subsection{判断当前仓库状态}
+
+\begin{table}[htbp]
+\centering
+\begin{tabularx}{\textwidth}{
+  >{\raggedright\arraybackslash}p{3.5cm}
+  >{\raggedright\arraybackslash}p{3.5cm}
+  >{\raggedright\arraybackslash}X}
+\toprule
+\textbf{\code{git log}} & \textbf{\code{git remote -v}} & \textbf{说明} \\
+\midrule
+报错或没有 commit & 没有输出 & 尚未建立正常的本地仓库 \\
+有 commit & 没有输出 & 有本地仓库，但尚未连接 GitHub \\
+有 commit & 有 GitHub URL & 本地仓库已经连接远程仓库 \\
+\bottomrule
+\end{tabularx}
+\caption{根据 Git 输出判断仓库状态}
+\end{table}
+
+如果当前文件夹还不是 Git 仓库，可以运行：
+
+\begin{lstlisting}[style=terminal]
+git init
+git add .
+git commit -m "add debugging exercise"
+\end{lstlisting}
+
+\begin{itemize}
+  \item \code{git init}：在当前文件夹中创建 \code{.git}，使其成为 Git 仓库。
+  \item \code{git add .}：暂存当前目录中所有未被忽略的修改。
+  \item \code{git commit -m "..."}：为这些修改创建第一个本地版本。
+\end{itemize}
+
+\begin{warningbox}[不要随便删除 \code{.git}]
+删除 \code{.git} 会彻底删除该仓库的本地 commit 历史、分支、remote 配置、
+stash 和其他 Git 记录。只有当练习仓库的历史完全不需要保留，并且工作文件已经备份时，
+才可以考虑删除后重建。正式项目和小组项目中不能把它当作常规修复方法。
+\end{warningbox}
+
+\section{Exercise 1：把本地仓库连接到 GitHub}
+
+\subsection{在 GitHub 创建空仓库}
+
+如果本地仓库已经包含 commit，那么在 GitHub 创建新仓库时最好：
+
+\begin{itemize}
+  \item 输入仓库名称，例如 \code{statprog-debugging}；
+  \item 按课程要求选择 Public 或 Private；
+  \item 不要让 GitHub 自动创建 README、license 或 \code{.gitignore}。
+\end{itemize}
+
+原因是：如果 GitHub 自动创建 README，远程仓库会产生一个本地没有的 commit。
+此时本地历史和远程历史从不同起点开始，第一次 push 可能会被拒绝。这个问题可以解决，
+但对初学练习而言，创建空仓库更简单。
+
+\subsection{SSH 身份验证}
+
+SSH 使用一对密钥：
+
+\begin{table}[htbp]
+\centering
+\begin{tabularx}{\textwidth}{
+  >{\raggedright\arraybackslash}p{3cm}
+  >{\raggedright\arraybackslash}X
+  >{\centering\arraybackslash}p{3cm}}
+\toprule
+\textbf{密钥} & \textbf{保存位置} & \textbf{能否公开} \\
+\midrule
+Private key 私钥 & 只保存在自己的电脑上 & 绝对不能 \\
+Public key 公钥 & 添加到 GitHub 账户 & 可以 \\
+\bottomrule
+\end{tabularx}
+\caption{SSH 密钥对}
+\end{table}
+
+配置完成后，可以测试连接：
+
+\begin{lstlisting}[style=terminal]
+ssh -T git@github.com
+\end{lstlisting}
+
+成功时会看到类似信息：
+
+\begin{lstlisting}[style=terminal]
+Hi YOUR-USERNAME! You've successfully authenticated...
+\end{lstlisting}
+
+该命令只测试身份，不会修改或上传仓库。如果出现
+\code{Permission denied (publickey)}，常见原因包括：
+
+\begin{itemize}
+  \item 公钥没有正确添加到 GitHub；
+  \item 添加了错误的文件，而不是以 \code{.pub} 结尾的公钥；
+  \item 私钥没有被 SSH agent 加载；
+  \item 仓库 remote 使用的是 HTTPS URL，而不是 SSH URL。
+\end{itemize}
+
+\subsection{连接本地仓库和 GitHub}
+
+\begin{lstlisting}[style=terminal]
+git remote add origin git@github.com:YOUR-USERNAME/statprog-debugging.git
+git branch -M main
+git push -u origin main
+\end{lstlisting}
+
+\paragraph{\code{git remote add origin ...}}
+把给定的 GitHub 地址注册为名叫 \code{origin} 的远程仓库。这一步只保存地址，
+不会上传任何文件。
+
+\paragraph{\code{git branch -M main}}
+把当前分支重命名为 \code{main}。\code{-M} 表示强制重命名。
+
+\paragraph{\code{git push -u origin main}}
+把本地 \code{main} 分支上传到远程 \code{origin}。
+\code{-u} 会建立 upstream 关系：
+
+\begin{center}
+\code{main} $\longrightarrow$ \code{origin/main}
+\end{center}
+
+此后通常只需运行：
+
+\begin{lstlisting}[style=terminal]
+git push
+git pull
+\end{lstlisting}
+
+\section{Exercise 2：使用 \code{.gitignore}}
+
+\subsection{\code{.gitignore} 的作用}
+
+\code{.gitignore} 告诉 Git：
+
+\begin{quote}
+这些文件可以存在于电脑中，但不应该纳入版本控制。
+\end{quote}
+
+适合 R 和 Quarto 项目的示例：
+
+\begin{lstlisting}[style=terminal]
+# R session artefacts
+.Rhistory
+.RData
+.Rproj.user/
+
+# Quarto build output
+/_site/
+/.quarto/
+*_files/
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+\end{lstlisting}
+
+\begin{table}[htbp]
+\centering
+\begin{tabularx}{\textwidth}{
+  >{\raggedright\arraybackslash}p{3.2cm}
+  >{\raggedright\arraybackslash}X}
+\toprule
+\textbf{文件或文件夹} & \textbf{为什么通常要忽略} \\
+\midrule
+\code{.Rhistory} & R Console 历史，不是可复现的分析代码 \\
+\code{.RData} & 自动保存整个 Workspace，内容不透明，不利于复现 \\
+\code{.Rproj.user/} & 当前电脑上的 RStudio 个人设置 \\
+\code{.quarto/} & Quarto 生成的临时构建内容 \\
+\code{\_site/} & 默认的网站生成结果 \\
+\code{.DS\_Store}、\code{Thumbs.db} & 操作系统自动产生的无关文件 \\
+\bottomrule
+\end{tabularx}
+\caption{R/Quarto 项目中常见的忽略对象}
+\end{table}
+
+\begin{warningbox}[项目规则优先]
+如果小组项目通过 \code{docs/} 发布 GitHub Pages，就不能把 \code{docs/} 随意加入
+\code{.gitignore}。同样，是否忽略 \code{data/} 取决于课程要求、数据大小和版权条件，
+不能机械照抄模板。
+\end{warningbox}
+
+\subsection{常见匹配规则}
+
+\begin{table}[htbp]
+\centering
+\begin{tabularx}{\textwidth}{
+  >{\raggedright\arraybackslash}p{4cm}
+  >{\raggedright\arraybackslash}X}
+\toprule
+\textbf{规则} & \textbf{含义} \\
+\midrule
+\code{.RData} & 忽略名为 \code{.RData} 的文件 \\
+\code{*.csv} & 忽略所有 CSV 文件 \\
+\code{data/} & 忽略整个 \code{data} 文件夹 \\
+\code{!data/README.md} & 即使忽略 \code{data/}，仍保留该 README \\
+\code{/\_site/} & 只忽略仓库根目录下的 \code{\_site} \\
+\bottomrule
+\end{tabularx}
+\caption{\code{.gitignore} 常见规则}
+\end{table}
+
+编辑完成后提交：
+
+\begin{lstlisting}[style=terminal]
+git add .gitignore
+git commit -m "add gitignore for R and Quarto"
+git push
+\end{lstlisting}
+
+\subsection{为什么文件仍然存在？}
+
+\code{.gitignore} 不会删除电脑上的文件，只会阻止未跟踪文件进入 Git。
+如果一个文件以前已经被 commit，那么新增忽略规则不会让 Git 自动停止跟踪它。
+
+对于单个文件：
+
+\begin{lstlisting}[style=terminal]
+git rm --cached path/to/file
+git commit -m "stop tracking file"
+git push
+\end{lstlisting}
+
+对于整个文件夹：
+
+\begin{lstlisting}[style=terminal]
+git rm -r --cached data/
+\end{lstlisting}
+
+\code{--cached} 表示只从 Git 的索引中移除，电脑上的本地文件仍会保留。
+
+\begin{warningbox}[秘密信息不能只靠删除文件解决]
+如果 API key、密码或 token 已经被 commit，后来删除当前文件并不能确保秘密消失，
+因为旧 commit 仍保存它。应立即撤销并重新生成该密钥；必要时还要清理 Git 历史。
+\end{warningbox}
+
+\section{Exercise 3：查看和恢复历史版本}
+
+\subsection{查看历史}
+
+\begin{lstlisting}[style=terminal]
+git log --oneline
+git log --oneline --graph
+git log -- practical3.qmd
+\end{lstlisting}
+
+第三条命令中的 \code{--} 用来区分 Git 参数和文件路径。它表示：
+
+\begin{quote}
+只查看与 \code{practical3.qmd} 有关的 commit。
+\end{quote}
+
+查看某个 commit 的具体改动：
+
+\begin{lstlisting}[style=terminal]
+git show <commit-hash>
+\end{lstlisting}
+
+查看某个文件在指定 commit 中的完整内容：
+
+\begin{lstlisting}[style=terminal]
+git show <commit-hash>:practical3.qmd
+\end{lstlisting}
+
+冒号左边指定 commit，右边指定该 commit 中的文件路径。
+
+\subsection{故意制造错误}
+
+题目要求删除或改坏 \code{.qmd} 文件的一部分，然后提交：
+
+\begin{lstlisting}[style=terminal]
+git add .
+git commit -m "deliberately break something for exercise 3"
+\end{lstlisting}
+
+这样是在模拟一种现实情况：
+
+\begin{quote}
+错误修改已经被 commit，现在需要从历史中找回正确版本。
+\end{quote}
+
+\subsection{恢复单个文件}
+
+假设错误发生前的 commit hash 是 \code{34dc819}：
+
+\begin{lstlisting}[style=terminal]
+git checkout 34dc819 -- practical3.qmd
+\end{lstlisting}
+
+它不会把整个仓库切换到旧版本，而是从 \code{34dc819} 中取出
+\code{practical3.qmd}，覆盖当前文件。其他文件不受影响。
+
+随后提交恢复结果：
+
+\begin{lstlisting}[style=terminal]
+git commit -m "restore practical3.qmd to pre-break version"
+\end{lstlisting}
+
+现代 Git 中也可以使用语义更清楚的写法：
+
+\begin{lstlisting}[style=terminal]
+git restore --source=34dc819 --staged --worktree practical3.qmd
+\end{lstlisting}
+
+\subsection{\code{checkout}、\code{restore} 和 \code{revert}}
+
+\begin{table}[htbp]
+\centering
+\begin{tabularx}{\textwidth}{
+  >{\raggedright\arraybackslash}p{4.2cm}
+  >{\raggedright\arraybackslash}X}
+\toprule
+\textbf{命令} & \textbf{作用} \\
+\midrule
+\code{git checkout <hash> -- file}
+& 从旧 commit 取回一个文件 \\
+
+\code{git restore --source=<hash> file}
+& 用含义更明确的新命令恢复文件 \\
+
+\code{git revert <hash>}
+& 创建一个新的 commit，用来撤销指定旧 commit 的修改 \\
+\bottomrule
+\end{tabularx}
+\caption{三个恢复相关命令的区别}
+\end{table}
+
+在已经共享的仓库中，\code{git revert} 通常比改写历史更安全，因为它保留旧 commit，
+并通过一个新 commit 明确记录撤销操作。
+
+\section{Exercise 4：Clone、Edit、Commit、Push}
+
+\subsection{克隆仓库}
+
+\begin{lstlisting}[style=terminal]
+git clone git@github.com:YOUR-USERNAME/statprog-debugging.git statprog-copy
+cd statprog-copy
+\end{lstlisting}
+
+\code{git clone} 不只是下载当前文件，它会：
+
+\begin{enumerate}
+  \item 下载 GitHub 仓库；
+  \item 创建 \code{statprog-copy} 文件夹；
+  \item 建立本地 \code{.git}；
+  \item 下载 commit 历史；
+  \item 自动设置 \code{origin}；
+  \item 检出默认分支。
+\end{enumerate}
+
+在副本中修改文件后：
+
+\begin{lstlisting}[style=terminal]
+git add .
+git commit -m "add comment from practical 4"
+git push
+\end{lstlisting}
+
+回到原始文件夹并获取修改：
+
+\begin{lstlisting}[style=terminal]
+cd ..
+cd 03-debugging
+git pull
+\end{lstlisting}
+
+该练习用两个本地文件夹模拟两台电脑或两个协作者：
+
+\begin{center}
+\textbf{副本 / 协作者 A}
+$\xrightarrow{\texttt{push}}$
+\textbf{GitHub}
+$\xrightarrow{\texttt{pull}}$
+\textbf{原文件夹 / 协作者 B}
+\end{center}
+
+\begin{warningbox}[Pull 前先看状态]
+如果原始文件夹中存在未 commit 的修改，并且与远程修改冲突，
+\code{git pull} 可能被拒绝或产生 merge conflict。因此在 pull 前先运行：
+\code{git status}。
+\end{warningbox}
+
+\section{Exercise 5：\code{fetch} 和 \code{pull}}
+
+\subsection{\code{git fetch}}
+
+\begin{lstlisting}[style=terminal]
+git fetch origin
+\end{lstlisting}
+
+它会下载 GitHub 上的新 commit，并更新 \code{origin/main}，但：
+
+\begin{itemize}
+  \item 不修改当前打开的本地文件；
+  \item 不自动合并到本地 \code{main}。
+\end{itemize}
+
+fetch 后可以把状态理解为：
+
+\begin{itemize}
+  \item \code{main}：本地当前状态；
+  \item \code{origin/main}：GitHub 最新状态的本地记录。
+\end{itemize}
+
+检查远程比本地多出的 commit：
+
+\begin{lstlisting}[style=terminal]
+git log HEAD..origin/main --oneline
+\end{lstlisting}
+
+查看本地和远程的具体差异：
+
+\begin{lstlisting}[style=terminal]
+git diff HEAD origin/main
+\end{lstlisting}
+
+确认后手动合并：
+
+\begin{lstlisting}[style=terminal]
+git merge origin/main
+\end{lstlisting}
+
+\subsection{\code{git pull}}
+
+\begin{lstlisting}[style=terminal]
+git pull
+\end{lstlisting}
+
+在课程采用的常见模型中，可以把它理解为：
+
+\begin{lstlisting}[style=terminal]
+git fetch
+git merge
+\end{lstlisting}
+
+也就是先下载远程 commit，再立即整合进当前分支。严格来说，具体整合方式也可能根据
+配置使用 rebase，但 Practical 这里重点理解 fetch 加 merge 的基本模型。
+
+\begin{table}[htbp]
+\centering
+\begin{tabularx}{\textwidth}{
+  >{\raggedright\arraybackslash}p{3cm}
+  >{\centering\arraybackslash}p{3cm}
+  >{\centering\arraybackslash}p{3cm}
+  >{\centering\arraybackslash}X}
+\toprule
+\textbf{命令} & \textbf{下载远程 commit} & \textbf{修改当前文件} & \textbf{自动整合} \\
+\midrule
+\code{git fetch} & 是 & 否 & 否 \\
+\code{git pull} & 是 & 是 & 是 \\
+\bottomrule
+\end{tabularx}
+\caption{\code{fetch} 与 \code{pull} 的区别}
+\end{table}
+
+\begin{infobox}[什么时候用哪个？]
+\begin{itemize}
+  \item 个人仓库、修改简单：通常可以直接 \code{git pull}。
+  \item 小组项目、希望先检查别人修改了什么：先 \code{git fetch}，检查后再 merge。
+\end{itemize}
+\end{infobox}
+
+小组项目中较谨慎的流程是：
+
+\begin{lstlisting}[style=terminal]
+git fetch origin
+git log HEAD..origin/main --oneline
+git diff HEAD origin/main
+git merge origin/main
+\end{lstlisting}
+
+\section{Exercise 6：Reflection Log}
+
+最后需要记录本周遇到的问题和学到的内容，例如：
+
+\begin{itemize}
+  \item SSH 配置过程中哪里出错？
+  \item commit 和 push 有什么区别？
+  \item 为什么 \code{.gitignore} 没有忽略已经 commit 的文件？
+  \item 什么情况下应当使用 fetch 而不是 pull？
+\end{itemize}
+
+可以写成：
+
+\begin{quote}
+I initially confused committing with uploading to GitHub. I now understand
+that a commit is stored locally, while push transfers local commits to the
+remote repository. I would use git fetch before merging when working in a
+shared repository because it allows me to inspect collaborators' changes first.
+\end{quote}
+
+然后提交 reflection：
+
+\begin{lstlisting}[style=terminal]
+git add reflection-log.qmd
+git commit -m "add week 4 reflection log"
+git push
+\end{lstlisting}
+
+\section{小组项目中的推荐工作流}
+
+\begin{lstlisting}[style=terminal]
+# 开始工作前
+git status
+git pull
+
+# 编辑代码和文档
+
+# 提交前检查
+git status
+git diff
+
+# 明确添加本次要提交的文件
+git add code/03_analysis.R
+
+# 检查即将提交的修改
+git diff --staged
+
+# 创建本地版本并上传
+git commit -m "add indexed age trend analysis"
+git push
+\end{lstlisting}
+
+\begin{warningbox}[不要机械地使用 \code{git add .}]
+\code{git add .} 会暂存当前目录下所有未忽略的修改。在正式项目中，更稳妥的做法是明确
+添加本次需要提交的文件，并使用 \code{git status} 和 \code{git diff --staged}
+检查即将提交的内容，避免把无关文件、临时文件或未完成的修改一起提交。
+\end{warningbox}
+
+\section{命令速查表}
+
+\begin{longtable}{>{\raggedright\arraybackslash}p{5.2cm}
+                  >{\raggedright\arraybackslash}p{9.2cm}}
+\toprule
+\textbf{命令} & \textbf{作用} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{命令} & \textbf{作用} \\
+\midrule
+\endhead
+\code{git status} & 查看当前仓库状态 \\
+\code{git init} & 把当前文件夹初始化为 Git 仓库 \\
+\code{git add <file>} & 把指定修改加入暂存区 \\
+\code{git commit -m "..."} & 在本地创建一个 commit \\
+\code{git log --oneline} & 简洁显示 commit 历史 \\
+\code{git show <hash>} & 查看指定 commit 的修改 \\
+\code{git remote -v} & 查看远程仓库地址 \\
+\code{git remote add origin <URL>} & 添加名为 origin 的远程仓库 \\
+\code{git push} & 上传本地 commit \\
+\code{git pull} & 下载并整合远程修改 \\
+\code{git fetch origin} & 下载远程信息，但不修改当前文件 \\
+\code{git diff} & 查看尚未暂存的修改 \\
+\code{git diff --staged} & 查看即将进入下一次 commit 的修改 \\
+\code{git clone <URL>} & 克隆完整仓库及其历史 \\
+\code{git restore --source=<hash> <file>} & 从旧 commit 恢复文件 \\
+\code{git revert <hash>} & 用新 commit 撤销旧 commit \\
+\code{git rm --cached <file>} & 停止跟踪文件，但保留本地副本 \\
+\bottomrule
+\end{longtable}
+
+\begin{summarybox}[中文核心总结]
+\begin{enumerate}
+  \item 保存文件只改变 Working Directory。
+  \item \code{git add} 决定下一次 commit 包含什么。
+  \item \code{git commit} 在本地创建版本。
+  \item \code{git push} 才把版本上传到 GitHub。
+  \item \code{.gitignore} 只影响尚未被跟踪的文件。
+  \item \code{git fetch} 只下载和更新远程记录；\code{git pull} 还会立即整合。
+  \item 共享仓库中优先保留清晰历史，不要随意删除 \code{.git} 或改写公共历史。
+\end{enumerate}
+\end{summarybox}
+
+\newpage
+\part{Deutsche Zusammenfassung}
+
+\section{Lernziele}
+
+Das Practical behandelt einen vollständigen lokalen und entfernten Git-Workflow:
+
+\begin{center}
+\textbf{Working Directory}
+$\xrightarrow{\texttt{git add}}$
+\textbf{Staging Area}
+$\xrightarrow{\texttt{git commit}}$
+\textbf{lokales Repository}
+$\xrightarrow{\texttt{git push}}$
+\textbf{GitHub}
+\end{center}
+
+Die zentrale Unterscheidung lautet:
+
+\begin{itemize}
+  \item \code{git add} wählt Änderungen für den nächsten Commit aus.
+  \item \code{git commit} speichert einen neuen Versionsstand lokal.
+  \item \code{git push} überträgt lokale Commits zum Remote-Repository.
+\end{itemize}
+
+\section{Konfiguration und Diagnose}
+
+\begin{lstlisting}[style=terminal]
+git config --global user.name
+git config --global user.email
+git status
+git log --oneline
+git remote -v
+\end{lstlisting}
+
+\code{git status} zeigt den aktuellen Branch sowie geänderte, gestagte und
+ungetrackte Dateien. \code{git log --oneline} zeigt die Commit-Historie in
+kompakter Form. \code{git remote -v} zeigt die konfigurierten Remote-Adressen.
+
+Falls das Verzeichnis noch kein Repository ist:
+
+\begin{lstlisting}[style=terminal]
+git init
+git add .
+git commit -m "add debugging exercise"
+\end{lstlisting}
+
+\begin{warningbox}[Vorsicht mit \code{.git}]
+Das Löschen des Verzeichnisses \code{.git} entfernt die gesamte lokale
+Versionsgeschichte, Branches, Remotes und Stashes. Dies ist keine normale
+Reparaturmethode für echte Projekte.
+\end{warningbox}
+
+\section{Lokales Repository mit GitHub verbinden}
+
+\begin{lstlisting}[style=terminal]
+git remote add origin git@github.com:USERNAME/REPOSITORY.git
+git branch -M main
+git push -u origin main
+\end{lstlisting}
+
+\code{origin} ist der übliche Name des Remote-Repositorys. Mit \code{-u} wird
+\code{origin/main} als Upstream des lokalen Branches \code{main} gespeichert.
+Danach genügen normalerweise \code{git push} und \code{git pull}.
+
+Für ein bereits bestehendes lokales Repository sollte das neue GitHub-Repository
+zunächst leer sein. Ein automatisch erzeugtes README würde einen zusätzlichen
+Remote-Commit erzeugen und kann den ersten Push unnötig komplizieren.
+
+\section{\code{.gitignore}}
+
+\code{.gitignore} verhindert, dass bestimmte noch nicht getrackte Dateien in die
+Versionskontrolle aufgenommen werden:
+
+\begin{lstlisting}[style=terminal]
+.Rhistory
+.RData
+.Rproj.user/
+/.quarto/
+/_site/
+.DS_Store
+Thumbs.db
+\end{lstlisting}
+
+Bereits commitete Dateien werden durch einen späteren Eintrag in
+\code{.gitignore} nicht automatisch ungetrackt. Dafür ist beispielsweise nötig:
+
+\begin{lstlisting}[style=terminal]
+git rm --cached path/to/file
+git commit -m "stop tracking file"
+git push
+\end{lstlisting}
+
+\code{--cached} entfernt die Datei aus dem Git-Index, behält sie aber lokal.
+
+\section{Historie prüfen und Dateien wiederherstellen}
+
+\begin{lstlisting}[style=terminal]
+git log --oneline --graph
+git log -- practical3.qmd
+git show <commit-hash>
+git show <commit-hash>:practical3.qmd
+\end{lstlisting}
+
+Eine einzelne Datei kann aus einem älteren Commit wiederhergestellt werden:
+
+\begin{lstlisting}[style=terminal]
+git restore --source=<commit-hash> --staged --worktree practical3.qmd
+\end{lstlisting}
+
+Alternativ funktioniert die ältere Schreibweise:
+
+\begin{lstlisting}[style=terminal]
+git checkout <commit-hash> -- practical3.qmd
+\end{lstlisting}
+
+\code{git revert <hash>} hat eine andere Funktion: Es erstellt einen neuen
+Commit, der die Änderungen eines älteren Commits rückgängig macht. In geteilten
+Repositories ist dies häufig sicherer als das Umschreiben der Historie.
+
+\section{Repository klonen und synchronisieren}
+
+\begin{lstlisting}[style=terminal]
+git clone git@github.com:USERNAME/REPOSITORY.git statprog-copy
+cd statprog-copy
+git add .
+git commit -m "add comment from practical 4"
+git push
+\end{lstlisting}
+
+\code{git clone} lädt nicht nur Dateien herunter, sondern kopiert auch die
+Commit-Historie, richtet \code{origin} ein und checkt den Standard-Branch aus.
+
+Vor einem Pull sollte der lokale Zustand geprüft werden:
+
+\begin{lstlisting}[style=terminal]
+git status
+git pull
+\end{lstlisting}
+
+Lokale, nicht commitete Änderungen können einen Pull blockieren oder zu
+Merge-Konflikten führen.
+
+\section{\code{fetch} und \code{pull}}
+
+\begin{table}[htbp]
+\centering
+\begin{tabularx}{\textwidth}{
+  >{\raggedright\arraybackslash}p{3cm}
+  >{\centering\arraybackslash}p{3.3cm}
+  >{\centering\arraybackslash}p{3.3cm}
+  >{\centering\arraybackslash}X}
+\toprule
+\textbf{Befehl} & \textbf{Remote-Commits laden} &
+\textbf{Arbeitsdateien ändern} & \textbf{Automatisch integrieren} \\
+\midrule
+\code{git fetch} & Ja & Nein & Nein \\
+\code{git pull} & Ja & Ja & Ja \\
+\bottomrule
+\end{tabularx}
+\caption{Unterschied zwischen \code{fetch} und \code{pull}}
+\end{table}
+
+\code{git fetch origin} aktualisiert die Remote-Tracking-Information
+\code{origin/main}, ohne den lokalen Branch oder die Arbeitsdateien zu verändern:
+
+\begin{lstlisting}[style=terminal]
+git fetch origin
+git log HEAD..origin/main --oneline
+git diff HEAD origin/main
+git merge origin/main
+\end{lstlisting}
+
+\code{git pull} kann im Grundmodell als \code{fetch} plus anschließende
+Integration verstanden werden. Je nach Konfiguration kann diese Integration
+über Merge oder Rebase erfolgen.
+
+\section{Empfohlener Workflow für das Gruppenprojekt}
+
+\begin{lstlisting}[style=terminal]
+git status
+git pull
+
+# Dateien bearbeiten
+
+git status
+git diff
+git add code/03_analysis.R
+git diff --staged
+git commit -m "add indexed age trend analysis"
+git push
+\end{lstlisting}
+
+Es ist sinnvoll, konkrete Dateien zu stagen, statt automatisch immer
+\code{git add .} zu verwenden. So lässt sich vor dem Commit besser kontrollieren,
+welche Änderungen tatsächlich zur neuen Version gehören.
+
+\begin{summarybox}[Deutsche Kurzfassung]
+\begin{enumerate}
+  \item Ein Commit ist ein lokaler Versionsstand; ein Push lädt ihn zu GitHub hoch.
+  \item \code{.gitignore} wirkt grundsätzlich nur auf noch nicht getrackte Dateien.
+  \item \code{git fetch} lädt Remote-Informationen ohne automatische Integration.
+  \item \code{git pull} lädt Remote-Änderungen und integriert sie sofort.
+  \item Vor \code{pull}, \code{commit} und \code{push} sollte
+        \code{git status} geprüft werden.
+  \item In geteilten Repositories sollte die Historie nachvollziehbar bleiben.
+\end{enumerate}
+\end{summarybox}
+
+\section*{Quelle}
+
+\begin{itemize}
+  \item LMU Statistical Programming II, Practical 4:
+  \url{https://soda-lmu.github.io/StatProg2-2026-SoSe/04-version-control/practical.html}
+\end{itemize}
+
+\end{document}
