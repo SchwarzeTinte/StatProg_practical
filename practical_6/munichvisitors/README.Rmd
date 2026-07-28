@@ -1,0 +1,40 @@
+---
+output: github_document
+---
+
+# munichvisitors
+
+The `munichvisitors` package provides tidy monthly visitor counts for
+Munich's public museums, sourced from Munich Open Data (Statistisches
+Amt München). It includes a ready-to-use plot function so you can
+explore trends with a single line of code.
+
+## Installation
+
+You can install the development version of `munichvisitors` from GitHub:
+
+```r
+# install.packages("devtools")
+devtools::install_github("SchwarzeTinte/munichvisitors")
+```
+
+## What's included
+
+- `museum_visitors` — a data frame of monthly visitor counts per museum,
+  including year-on-year comparison figures
+- `plot_museums()` — a function for plotting visitor trends over time
+
+## Example
+
+```r
+library(munichvisitors)
+
+plot_museums()
+```
+
+## Data source
+
+Landeshauptstadt München (2017). *Monatszahlen Museen*.
+Statistisches Amt München.
+
+License: Datenlizenz Deutschland – Namensnennung – Version 2.0.

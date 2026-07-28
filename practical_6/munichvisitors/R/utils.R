@@ -1,0 +1,10 @@
+utils::globalVariables(
+  c(
+    "museum_visitors",
+    "monat",
+    "wert",
+    "auspraegung",
+    "jahr",
+    "monatszahl"
+  )
+)

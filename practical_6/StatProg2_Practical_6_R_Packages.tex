@@ -1,0 +1,745 @@
+
+\documentclass[11pt,a4paper]{ctexart}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+
+\hypersetup{colorlinks=true,linkcolor=blue!60!black,urlcolor=blue!60!black}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Statistical Programming II}
+\fancyhead[R]{Practical 6: R Packages}
+\fancyfoot[C]{\thepage}
+
+\definecolor{codebg}{RGB}{247,247,247}
+\definecolor{codeframe}{RGB}{210,210,210}
+\lstdefinelanguage{R}{
+  morekeywords={function,if,else,TRUE,FALSE,NULL,NA},
+  otherkeywords={|>,::,<-,\%in\%},
+  sensitive=true,
+  morecomment=[l]{\#},
+  morestring=[b]",
+  morestring=[b]'
+}
+\lstset{
+  language=R,
+  backgroundcolor=\color{codebg},
+  frame=single,
+  rulecolor=\color{codeframe},
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  showstringspaces=false,
+  columns=fullflexible,
+  keepspaces=true
+}
+
+\title{\textbf{Statistical Programming II}\\Practical 6: R Packages\\题目与答案整理}
+\author{Youpeng Jiang}
+\date{\today}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+
+\section{总体目标}
+
+本次 Practical 从零创建 R Package \texttt{munichvisitors}，包括：
+
+\begin{itemize}
+  \item Package 基础结构、\texttt{DESCRIPTION}、README 和许可证；
+  \item 下载、清理并保存慕尼黑博物馆访客数据；
+  \item 编写、记录并导出 \texttt{plot\_museums()}；
+  \item 使用 testthat 测试并用 \texttt{devtools::check()} 检查；
+  \item 为第二个慕尼黑开放数据集设计带参数的新函数。
+\end{itemize}
+
+\section{Part 1：创建 Package}
+
+\subsection{Exercise 1.1：初始化}
+
+在 RStudio Console 中运行：
+
+\begin{lstlisting}
+usethis::create_package("munichvisitors")
+\end{lstlisting}
+
+也可以使用绝对路径：
+
+\begin{lstlisting}
+usethis::create_package(
+  "C:/Data/StatProg_practical/practical_6/munichvisitors"
+)
+\end{lstlisting}
+
+创建后的核心结构：
+
+\begin{verbatim}
+munichvisitors/
+├── DESCRIPTION
+├── NAMESPACE
+├── R/
+├── munichvisitors.Rproj
+├── .gitignore
+└── .Rbuildignore
+\end{verbatim}
+
+\begin{itemize}
+  \item \texttt{DESCRIPTION}：Package 元数据和依赖。
+  \item \texttt{NAMESPACE}：控制导出和导入，通常由 roxygen2 生成。
+  \item \texttt{R/}：存放 Package 正式函数。
+  \item \texttt{.gitignore}：Git 忽略规则。
+  \item \texttt{.Rbuildignore}：构建 Package 时忽略的文件。
+\end{itemize}
+
+\subsection{Exercise 1.2：DESCRIPTION}
+
+在项目根目录的 \texttt{DESCRIPTION} 中写：
+
+\begin{verbatim}
+Package: munichvisitors
+Title: Monthly Visitor Counts for Munich Museums
+Version: 0.0.0.9000
+Authors@R:
+    person("Youpeng", "Jiang", , "your-email@example.com",
+           role = c("aut", "cre"))
+Description: Provides tidy monthly visitor statistics for Munich's museums
+    from Munich Open Data, with a helper plot function.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+LazyData: true
+Imports:
+    dplyr,
+    ggplot2,
+    scales
+Suggests:
+    janitor,
+    readr,
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown
+Config/testthat/edition: 3
+VignetteBuilder: knitr
+\end{verbatim}
+
+延续行必须缩进。\texttt{Imports} 是运行时依赖，\texttt{Suggests} 是测试、文档或数据预处理依赖。
+
+添加 MIT License：
+
+\begin{lstlisting}
+usethis::use_mit_license()
+\end{lstlisting}
+
+\subsection{Exercise 1.3：README}
+
+Console：
+
+\begin{lstlisting}
+usethis::use_readme_rmd()
+\end{lstlisting}
+
+\texttt{README.Rmd} 的基本结构：
+
+\begin{verbatim}
+---
+output: github_document
+---
+
+# munichvisitors
+
+The package provides tidy monthly visitor counts for Munich museums.
+
+## Installation
+
+```r
+devtools::install_github("your-username/munichvisitors")
+```
+
+## Included objects
+
+- `museum_visitors`
+- `plot_museums()`
+
+## Example
+
+```r
+library(munichvisitors)
+plot_museums()
+```
+\end{verbatim}
+
+渲染：
+
+\begin{lstlisting}
+rmarkdown::render("README.Rmd")
+\end{lstlisting}
+
+主要编辑 \texttt{README.Rmd}，生成的 \texttt{README.md} 供 GitHub 显示。
+
+\section{Part 2：添加数据}
+
+\subsection{Exercise 2.1：data-raw}
+
+Console：
+
+\begin{lstlisting}
+usethis::use_data_raw("museum-visitors")
+\end{lstlisting}
+
+生成：
+
+\begin{verbatim}
+data-raw/museum-visitors.R
+\end{verbatim}
+
+\texttt{data-raw/} 保存生成数据的脚本，\texttt{data/} 保存最终数据对象。
+
+\subsection{Exercise 2.2：下载、清理和保存}
+
+Console 中声明开发依赖：
+
+\begin{lstlisting}
+usethis::use_package("readr", type = "Suggests")
+usethis::use_package("janitor", type = "Suggests")
+\end{lstlisting}
+
+在 \texttt{data-raw/museum-visitors.R} 中写：
+
+\begin{lstlisting}
+url <- paste0(
+  "https://opendata.muenchen.de/dataset/",
+  "bfb4a286-bea5-4bfe-82ce-b9bd354284a5/resource/",
+  "6c6a809e-91ee-4f3e-9268-a8b7bc38311c/download/",
+  "monatszahlen2603_museen_16_03_26.csv"
+)
+
+museum_visitors_raw <- readr::read_csv(url)
+
+museum_visitors <- museum_visitors_raw |>
+  janitor::clean_names()
+
+usethis::use_data(
+  museum_visitors,
+  overwrite = TRUE
+)
+\end{lstlisting}
+
+执行整个脚本后生成：
+
+\begin{verbatim}
+data/museum_visitors.rda
+\end{verbatim}
+
+\subsection{Exercise 2.3：检查数据}
+
+Console：
+
+\begin{lstlisting}
+devtools::load_all()
+
+museum_visitors
+dplyr::glimpse(museum_visitors)
+names(museum_visitors)
+dim(museum_visitors)
+class(museum_visitors)
+\end{lstlisting}
+
+重要列包括：
+
+\begin{verbatim}
+monatszahl
+auspraegung
+jahr
+monat
+wert
+vorjahreswert
+veraend_vormonat_prozent
+veraend_vorjahresmonat_prozent
+zwoelf_monate_mittelwert
+\end{verbatim}
+
+自动检查：
+
+\begin{lstlisting}
+expected_columns <- c(
+  "monatszahl", "auspraegung", "jahr", "monat", "wert",
+  "vorjahreswert", "veraend_vormonat_prozent",
+  "veraend_vorjahresmonat_prozent",
+  "zwoelf_monate_mittelwert"
+)
+
+all(expected_columns %in% names(museum_visitors))
+\end{lstlisting}
+
+\subsection{Exercise 2.4：数据文档}
+
+Console：
+
+\begin{lstlisting}
+usethis::use_r("data")
+\end{lstlisting}
+
+在 \texttt{R/data.R} 中写：
+
+\begin{lstlisting}
+#' Monthly visitor counts for Munich museums
+#'
+#' Monthly and annual visitor statistics for Munich's public museums.
+#'
+#' @format A data frame with monthly and annual observations:
+#' \describe{
+#'   \item{monatszahl}{Category label}
+#'   \item{auspraegung}{Museum name}
+#'   \item{jahr}{Year}
+#'   \item{monat}{YYYYMM code or "Summe"}
+#'   \item{wert}{Monthly value or annual total}
+#'   \item{vorjahreswert}{Value for the prior period}
+#'   \item{veraend_vormonat_prozent}{Change vs. previous month}
+#'   \item{veraend_vorjahresmonat_prozent}{Change vs. prior year}
+#'   \item{zwoelf_monate_mittelwert}{12-month rolling average}
+#' }
+#' @source Landeshauptstadt München. Monatszahlen Museen.
+"museum_visitors"
+\end{lstlisting}
+
+生成并查看帮助：
+
+\begin{lstlisting}
+devtools::document()
+devtools::load_all()
+?museum_visitors
+\end{lstlisting}
+
+数据文档最后使用字符串 \texttt{"museum\_visitors"}，不需要 \texttt{@export}。
+
+\section{Part 3：添加函数}
+
+\subsection{Exercise 3.1：plot\_museums()}
+
+Console：
+
+\begin{lstlisting}
+usethis::use_r("plot_museums")
+usethis::use_package("dplyr")
+usethis::use_package("ggplot2")
+usethis::use_package("scales")
+\end{lstlisting}
+
+在 \texttt{R/plot\_museums.R} 中写：
+
+\begin{lstlisting}
+#' Annual visitor counts per Munich museum
+#'
+#' Plots annual visitor totals using rows where `monat == "Summe"`.
+#'
+#' @return A `ggplot2` plot object.
+#' @export
+#' @examples
+#' plot_museums()
+plot_museums <- function() {
+  museum_visitors |>
+    dplyr::filter(monat == "Summe") |>
+    ggplot2::ggplot(
+      ggplot2::aes(
+        x = jahr,
+        y = wert,
+        colour = auspraegung
+      )
+    ) +
+    ggplot2::geom_line() +
+    ggplot2::labs(
+      title = "Annual Visitors to Museums in Munich",
+      x = "Year",
+      y = "Visitors",
+      colour = "Museum"
+    ) +
+    ggplot2::scale_y_continuous(
+      labels = scales::label_number()
+    )
+}
+\end{lstlisting}
+
+虽然题目有时称其为 monthly plot，但筛选 \texttt{monat == "Summe"} 后实际画的是年度总数。
+
+创建 \texttt{R/utils.R}：
+
+\begin{lstlisting}
+usethis::use_r("utils")
+\end{lstlisting}
+
+内容：
+
+\begin{lstlisting}
+utils::globalVariables(
+  c(
+    "museum_visitors",
+    "monat",
+    "wert",
+    "auspraegung",
+    "jahr"
+  )
+)
+\end{lstlisting}
+
+\subsection{Exercise 3.2：文档和导出}
+
+运行：
+
+\begin{lstlisting}
+devtools::document()
+devtools::load_all()
+
+plot_museums()
+?plot_museums
+\end{lstlisting}
+
+生成：
+
+\begin{verbatim}
+man/plot_museums.Rd
+NAMESPACE
+\end{verbatim}
+
+\texttt{NAMESPACE} 中应有：
+
+\begin{verbatim}
+export(plot_museums)
+\end{verbatim}
+
+这来自 \texttt{\#' @export}，不要手动修改 \texttt{NAMESPACE}。
+
+\subsubsection*{Usage 来自哪里？}
+
+帮助页面中的：
+
+\begin{verbatim}
+Usage
+
+plot_museums()
+\end{verbatim}
+
+由函数定义自动生成：
+
+\begin{lstlisting}
+plot_museums <- function() {
+\end{lstlisting}
+
+如果定义是：
+
+\begin{lstlisting}
+plot_museums <- function(museum, start_year = 2020) {
+\end{lstlisting}
+
+Usage 会自动显示：
+
+\begin{verbatim}
+plot_museums(museum, start_year = 2020)
+\end{verbatim}
+
+\subsection{Exercise 3.3：Package check}
+
+Console：
+
+\begin{lstlisting}
+devtools::check()
+\end{lstlisting}
+
+目标：
+
+\begin{verbatim}
+0 errors | 0 warnings | 0 notes
+\end{verbatim}
+
+常见问题：
+
+\begin{itemize}
+  \item 缺少 \texttt{@export}；
+  \item 外部函数未写成 \texttt{package::function()}；
+  \item 依赖未写入 \texttt{DESCRIPTION}；
+  \item 裸列名未在 \texttt{globalVariables()} 中声明；
+  \item 函数或数据缺少文档；
+  \item Examples 在干净环境中不能运行。
+\end{itemize}
+
+\subsection{Exercise 3.4：自动测试}
+
+Console：
+
+\begin{lstlisting}
+usethis::use_testthat()
+usethis::use_test("plot_museums")
+\end{lstlisting}
+
+在 \texttt{tests/testthat/test-plot\_museums.R} 中写：
+
+\begin{lstlisting}
+test_that("plot_museums returns a ggplot object", {
+  result <- plot_museums()
+  expect_s3_class(result, "gg")
+})
+
+test_that("museum_visitors has expected columns", {
+  expect_true(
+    all(
+      c("auspraegung", "jahr", "monat", "wert") %in%
+        names(museum_visitors)
+    )
+  )
+})
+\end{lstlisting}
+
+运行：
+
+\begin{lstlisting}
+devtools::test()
+devtools::check()
+\end{lstlisting}
+
+\section{Part 4：第二个数据集}
+
+这里选择慕尼黑 Theater 数据，设计：
+
+\begin{lstlisting}
+get_theatre_stats(
+  indicator = "Besucher*innen",
+  years = NULL
+)
+\end{lstlisting}
+
+\subsection{创建文件和依赖}
+
+Console：
+
+\begin{lstlisting}
+usethis::use_r("get_theatre_stats")
+usethis::use_package("readr", type = "Imports")
+usethis::use_package("janitor", type = "Imports")
+\end{lstlisting}
+
+因为函数运行时在线读取和清理数据，\texttt{readr} 和 \texttt{janitor} 属于 \texttt{Imports}。
+
+\subsection{函数代码}
+
+在 \texttt{R/get\_theatre\_stats.R} 中写：
+
+\begin{lstlisting}
+#' Download monthly statistics for Munich theatres
+#'
+#' @param indicator One of `"Besucher*innen"`, `"Aufführungen"`,
+#'   or `"Platzausnutzung"`.
+#' @param years Optional numeric vector of years. `NULL` keeps all.
+#'
+#' @return A tibble containing monthly theatre statistics.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' get_theatre_stats()
+#' get_theatre_stats("Aufführungen", 2019:2024)
+#' }
+get_theatre_stats <- function(
+    indicator = "Besucher*innen",
+    years = NULL
+) {
+  allowed_indicators <- c(
+    "Besucher*innen",
+    "Aufführungen",
+    "Platzausnutzung"
+  )
+
+  if (
+    !is.character(indicator) ||
+      length(indicator) != 1L ||
+      is.na(indicator) ||
+      !indicator %in% allowed_indicators
+  ) {
+    stop(
+      paste0(
+        "`indicator` must be one of: ",
+        paste(allowed_indicators, collapse = ", "),
+        "."
+      ),
+      call. = FALSE
+    )
+  }
+
+  if (
+    !is.null(years) &&
+      (!is.numeric(years) || anyNA(years))
+  ) {
+    stop(
+      "`years` must be NULL or a numeric vector without missing values.",
+      call. = FALSE
+    )
+  }
+
+  url <- paste0(
+    "https://opendata.muenchen.de/dataset/",
+    "dacf1009-8933-4cdf-8c9d-40afd54e4ef7/resource/",
+    "eb734a10-3b0a-4421-ae1d-4226f9409538/download/",
+    "monatszahlen2510_theater_30_10_25.csv"
+  )
+
+  theatre_data <- readr::read_csv(
+    url,
+    show_col_types = FALSE
+  ) |>
+    janitor::clean_names()
+
+  result <- theatre_data |>
+    dplyr::filter(
+      monatszahl == indicator,
+      monat != "Summe",
+      !is.na(wert)
+    )
+
+  if (!is.null(years)) {
+    result <- result |>
+      dplyr::filter(jahr %in% years)
+  }
+
+  result
+}
+\end{lstlisting}
+
+在 \texttt{R/utils.R} 中加入 \texttt{monatszahl}：
+
+\begin{lstlisting}
+utils::globalVariables(
+  c(
+    "museum_visitors",
+    "monatszahl",
+    "monat",
+    "wert",
+    "auspraegung",
+    "jahr"
+  )
+)
+\end{lstlisting}
+
+\subsection{手动检查代码放在哪里？}
+
+以下内容直接输入 RStudio Console，不放入 \texttt{R/}：
+
+\begin{lstlisting}
+devtools::document()
+devtools::load_all()
+
+theatre_visitors <- get_theatre_stats()
+dplyr::glimpse(theatre_visitors)
+unique(theatre_visitors$monatszahl)
+
+theatre_2019_2024 <- get_theatre_stats(
+  indicator = "Aufführungen",
+  years = 2019:2024
+)
+
+range(theatre_2019_2024$jahr)
+unique(theatre_2019_2024$monatszahl)
+unique(theatre_2019_2024$monat)
+\end{lstlisting}
+
+\begin{longtable}{p{0.43\textwidth}p{0.47\textwidth}}
+\toprule
+代码 & 放置位置 \\
+\midrule
+函数定义 & \texttt{R/get\_theatre\_stats.R} \\
+\texttt{globalVariables()} & \texttt{R/utils.R} \\
+\texttt{devtools::*()}、\texttt{usethis::*()} & RStudio Console \\
+手动调用和检查结果 & RStudio Console \\
+\texttt{test\_that()}、\texttt{expect\_*()} & \texttt{tests/testthat/} \\
+\bottomrule
+\end{longtable}
+
+\subsection{测试第二个函数}
+
+Console：
+
+\begin{lstlisting}
+usethis::use_test("get_theatre_stats")
+\end{lstlisting}
+
+在 \texttt{tests/testthat/test-get\_theatre\_stats.R} 中写：
+
+\begin{lstlisting}
+test_that("invalid theatre indicators are rejected", {
+  expect_error(
+    get_theatre_stats(indicator = "Kinobesuche"),
+    "`indicator` must be one of"
+  )
+})
+
+test_that("years must be numeric", {
+  expect_error(
+    get_theatre_stats(years = "2024"),
+    "`years` must be NULL or a numeric vector"
+  )
+})
+\end{lstlisting}
+
+最后运行：
+
+\begin{lstlisting}
+devtools::document()
+devtools::test()
+devtools::check()
+\end{lstlisting}
+
+\section{常用命令速查}
+
+\begin{longtable}{p{0.43\textwidth}p{0.47\textwidth}}
+\toprule
+命令 & 作用 \\
+\midrule
+\texttt{usethis::create\_package()} & 创建 Package。\\
+\texttt{usethis::use\_r()} & 创建 \texttt{R/} 源文件。\\
+\texttt{usethis::use\_data\_raw()} & 创建数据预处理脚本。\\
+\texttt{usethis::use\_data()} & 保存 Package 数据。\\
+\texttt{usethis::use\_package()} & 声明依赖。\\
+\texttt{usethis::use\_testthat()} & 初始化测试。\\
+\texttt{usethis::use\_test()} & 创建测试文件。\\
+\texttt{devtools::document()} & 生成帮助文件和 NAMESPACE。\\
+\texttt{devtools::load\_all()} & 加载开发版本。\\
+\texttt{devtools::test()} & 运行测试。\\
+\texttt{devtools::check()} & 完整检查 Package。\\
+\bottomrule
+\end{longtable}
+
+\section{Deutsch: Kurzzusammenfassung}
+
+Das Practical entwickelt ein vollständiges R-Package namens
+\texttt{munichvisitors}. Konsolenbefehle wie
+\texttt{usethis::use\_*()}, \texttt{devtools::document()},
+\texttt{devtools::load\_all()}, \texttt{devtools::test()} und
+\texttt{devtools::check()} werden in der RStudio-Konsole ausgeführt.
+Funktionsdefinitionen gehören in \texttt{R/}, Datenskripte in
+\texttt{data-raw/} und Tests in \texttt{tests/testthat/}.
+
+Der vollständige Workflow lautet:
+
+\begin{verbatim}
+Code oder Dokumentation ändern
+        ↓
+devtools::document()
+        ↓
+devtools::load_all()
+        ↓
+devtools::test()
+        ↓
+devtools::check()
+\end{verbatim}
+
+Das Ziel ist ein Check mit:
+
+\begin{verbatim}
+0 errors | 0 warnings | 0 notes
+\end{verbatim}
+
+\end{document}
